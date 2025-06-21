@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { 
   FiSave, 
@@ -251,6 +251,30 @@ const Settings = () => {
     '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'
   ];
 
+  useEffect(() => {
+    // Load saved settings from localStorage
+    try {
+      const savedSettings = localStorage.getItem('choovio_settings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(prev => ({ ...prev, ...parsedSettings }));
+        
+        // Apply saved theme
+        if (parsedSettings.company?.primaryColor) {
+          document.documentElement.style.setProperty('--primary-color', parsedSettings.company.primaryColor);
+        }
+        if (parsedSettings.company?.secondaryColor) {
+          document.documentElement.style.setProperty('--secondary-color', parsedSettings.company.secondaryColor);
+        }
+        if (parsedSettings.company?.name) {
+          document.title = `${parsedSettings.company.name} IoT Dashboard`;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load saved settings:', error);
+    }
+  }, []);
+
   const handleToggle = (section, key) => {
     setSettings(prev => ({
       ...prev,
@@ -272,8 +296,26 @@ const Settings = () => {
   };
 
   const handleSave = () => {
-    console.log('Saving settings:', settings);
-    // Save logic here
+    try {
+      // Save to localStorage for persistence
+      localStorage.setItem('choovio_settings', JSON.stringify(settings));
+      alert('Settings saved successfully!');
+      console.log('Settings saved:', settings);
+      
+      // Apply theme changes if color was updated
+      if (settings.company.primaryColor || settings.company.secondaryColor) {
+        document.documentElement.style.setProperty('--primary-color', settings.company.primaryColor);
+        document.documentElement.style.setProperty('--secondary-color', settings.company.secondaryColor);
+      }
+      
+      // Apply company name if changed
+      if (settings.company.name) {
+        document.title = `${settings.company.name} IoT Dashboard`;
+      }
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
   };
 
   return (
