@@ -21,7 +21,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "deploy": "npm run build && vercel --prod"
+    "deploy": "npm run build && ../aws-deployment/scripts/upload-react-to-s3.sh"
   },
   "eslintConfig": {
     "extends": [
