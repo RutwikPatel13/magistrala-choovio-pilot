@@ -1,0 +1,24 @@
+{
+  "name": "magistrala-choovio-dashboard",
+  "version": 2,
+  "builds": [
+    {
+      "src": "custom-dashboard/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/custom-dashboard/build/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/custom-dashboard/build/index.html"
+    }
+  ],
+  "outputDirectory": "custom-dashboard/build"
+}

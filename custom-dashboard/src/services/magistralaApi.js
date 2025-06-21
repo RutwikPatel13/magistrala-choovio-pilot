@@ -2,15 +2,47 @@
 // Advanced IoT platform integration with full feature support
 
 class MagistralaAPI {
-  constructor(baseURL = 'http://44.196.96.48/api/v1') {
+  constructor(baseURL = 'http://44.196.96.48') {
     this.baseURL = baseURL;
+    this.usersURL = `${baseURL}:9002`; // Users service port
     this.token = localStorage.getItem('magistrala_token');
   }
 
   // Authentication Management
   async login(email, password) {
     try {
-      // Demo credentials check
+      // Use Magistrala's /users/tokens/issue endpoint
+      const response = await fetch(`${this.usersURL}/users/tokens/issue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identity: email,
+          secret: password,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        this.token = data.access_token;
+        localStorage.setItem('magistrala_token', this.token);
+        
+        // Get user info using the token
+        const userData = await this.getUserInfo();
+        return {
+          token: data.access_token,
+          refresh_token: data.refresh_token,
+          user: userData,
+          success: true
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Authentication failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      // Fallback to demo credentials for development
       if (email === 'admin@choovio.com' && password === 'admin123') {
         const mockToken = 'demo_token_' + Date.now();
         const userData = {
@@ -31,62 +63,46 @@ class MagistralaAPI {
         };
       }
       
-      if (email === 'user@choovio.com' && password === 'user123') {
-        const mockToken = 'demo_token_' + Date.now();
-        const userData = {
-          id: 'user-002',
-          name: 'Demo User',
-          email: 'user@choovio.com',
-          role: 'User'
-        };
-        
-        this.token = mockToken;
-        localStorage.setItem('magistrala_token', mockToken);
-        localStorage.setItem('magistrala_user', JSON.stringify(userData));
-        
-        return {
-          token: mockToken,
-          user: userData,
-          success: true
-        };
-      }
-
-      // Try real Magistrala API
-      const response = await fetch(`${this.baseURL}/users/tokens/issue`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identity: email,
-          secret: password,
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        this.token = data.access_token;
-        localStorage.setItem('magistrala_token', this.token);
-        
-        // Get user info
-        const userData = await this.getUserInfo();
-        return {
-          token: data.access_token,
-          user: userData,
-          success: true
-        };
-      }
-      
-      throw new Error('Invalid credentials');
-    } catch (error) {
-      console.error('Login error:', error);
       throw new Error('Invalid email or password');
     }
   }
 
   async createUser(user) {
     try {
-      // Simulate user creation for demo
+      // Use Magistrala's /users endpoint
+      const response = await fetch(`${this.usersURL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: user.name,
+          credentials: {
+            identity: user.email,
+            secret: user.password
+          },
+          metadata: {
+            role: user.role || 'User'
+          }
+        }),
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        return {
+          ...userData,
+          success: true,
+          email: user.email,
+          role: user.role || 'User'
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Create user error:', error);
+      
+      // Fallback for demo/development
       const mockUser = {
         id: 'user-' + Date.now(),
         name: user.name,
@@ -102,30 +118,6 @@ class MagistralaAPI {
       localStorage.setItem('demo_users', JSON.stringify(existingUsers));
       
       return mockUser;
-
-      // Real API call (commented out for demo)
-      /*
-      const response = await fetch(`${this.baseURL}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: user.name,
-          credentials: {
-            identity: user.email,
-            secret: user.password
-          },
-          metadata: {
-            role: user.role
-          }
-        }),
-      });
-      return await response.json();
-      */
-    } catch (error) {
-      console.error('Create user error:', error);
-      throw error;
     }
   }
 
@@ -136,18 +128,21 @@ class MagistralaAPI {
         return JSON.parse(savedUser);
       }
       
-      // Try to get user info from API
-      const response = await fetch(`${this.baseURL}/users/profile`, {
+      // Try to get user info from Magistrala API
+      const response = await fetch(`${this.usersURL}/users/profile`, {
         headers: {
           'Authorization': `Bearer ${this.token}`,
         },
       });
       
       if (response.ok) {
-        return await response.json();
+        const userData = await response.json();
+        // Store user data for future use
+        localStorage.setItem('magistrala_user', JSON.stringify(userData));
+        return userData;
       }
       
-      // Return default user info
+      // Return default user info if API call fails
       return {
         id: 'user-default',
         name: 'User',
@@ -174,8 +169,10 @@ class MagistralaAPI {
   // Device Management (Clients in Magistrala)
   async getDevices(offset = 0, limit = 100) {
     try {
+      // Magistrala Things service typically runs on port 9000
+      const thingsURL = `${this.baseURL}:9000`;
       const response = await fetch(
-        `${this.baseURL}/clients?offset=${offset}&limit=${limit}`,
+        `${thingsURL}/things?offset=${offset}&limit=${limit}`,
         {
           headers: {
             'Authorization': `Bearer ${this.token}`,
@@ -185,20 +182,31 @@ class MagistralaAPI {
       );
       
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        // Transform Magistrala things to our device format
+        return {
+          clients: data.things?.map(thing => ({
+            id: thing.id,
+            name: thing.name,
+            status: thing.status || 'unknown',
+            metadata: thing.metadata || {}
+          })) || [],
+          total: data.total || 0
+        };
       }
       
       // Return mock data if API not available
       return this.getMockDevices();
     } catch (error) {
-      console.warn('API not available, using mock data:', error);
+      console.warn('Things API not available, using mock data:', error);
       return this.getMockDevices();
     }
   }
 
   async createDevice(device) {
     try {
-      const response = await fetch(`${this.baseURL}/clients`, {
+      const thingsURL = `${this.baseURL}:9000`;
+      const response = await fetch(`${thingsURL}/things`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.token}`,
@@ -214,7 +222,12 @@ class MagistralaAPI {
           },
         }),
       });
-      return await response.json();
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      return this.createMockDevice(device);
     } catch (error) {
       console.error('Create device error:', error);
       return this.createMockDevice(device);

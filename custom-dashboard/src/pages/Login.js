@@ -245,6 +245,21 @@ const DemoCredentials = styled.div`
     color: #2c5282;
     margin: 0.25rem 0;
   }
+
+  .api-info {
+    background: #f0f9ff;
+    border: 1px solid #7dd3fc;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    color: #0c4a6e;
+    
+    .api-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+  }
 `;
 
 const Login = () => {
@@ -324,10 +339,13 @@ const Login = () => {
         <DemoCredentials>
           <div className="demo-title">
             <FiShield size={16} />
-            Demo Credentials
+            Magistrala Authentication
           </div>
           <div className="demo-item">
-            <strong>Admin:</strong> admin@choovio.com / admin123 
+            Use your Magistrala user credentials created via the platform
+          </div>
+          <div className="demo-item">
+            <strong>Demo fallback:</strong> admin@choovio.com / admin123
             <button 
               type="button" 
               onClick={() => fillDemoCredentials('admin')}
@@ -344,23 +362,9 @@ const Login = () => {
               (Use)
             </button>
           </div>
-          <div className="demo-item">
-            <strong>User:</strong> user@choovio.com / user123
-            <button 
-              type="button" 
-              onClick={() => fillDemoCredentials('user')}
-              style={{ 
-                marginLeft: '8px', 
-                background: 'none', 
-                border: 'none', 
-                color: '#2C5282', 
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                fontSize: '0.8rem'
-              }}
-            >
-              (Use)
-            </button>
+          <div className="api-info">
+            <div className="api-title">API Integration</div>
+            This dashboard integrates with Magistrala's authentication API (/users/tokens/issue) for secure user login and token management.
           </div>
         </DemoCredentials>
 
