@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import { FiBell, FiUser, FiSearch, FiSettings, FiLogOut, FiMail } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 const HeaderContainer = styled.header`
   background: ${props => props.theme.white};
@@ -262,6 +264,8 @@ const Header = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const searchData = [
     { type: 'device', title: 'Temperature Sensor #1', subtitle: 'Building A - Floor 1' },
@@ -341,15 +345,15 @@ const Header = () => {
     setShowUserMenu(false);
     switch (action) {
       case 'profile':
-        alert('Profile page would open here');
+        navigate('/profile');
         break;
       case 'settings':
-        window.location.hash = '/settings';
+        navigate('/settings');
         break;
       case 'logout':
         if (window.confirm('Are you sure you want to logout?')) {
-          localStorage.removeItem('magistrala_token');
-          alert('Logged out successfully');
+          logout();
+          navigate('/login');
         }
         break;
       default:
@@ -443,8 +447,8 @@ const Header = () => {
         {showUserMenu && (
           <UserDropdown>
             <div className="user-info">
-              <div className="user-name">Admin User</div>
-              <div className="user-email">admin@choovio.com</div>
+              <div className="user-name">{user?.name || 'User'}</div>
+              <div className="user-email">{user?.email || 'user@choovio.com'}</div>
             </div>
             <div 
               className="user-menu-item"
