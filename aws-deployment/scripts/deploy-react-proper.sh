@@ -21,15 +21,15 @@ sudo mkdir -p /var/log/magistrala
 
 # Download React build files from S3 or GitHub
 # Option 1: From S3 bucket (if files are uploaded there)
-if aws s3 ls s3://magistrala-react-assets/ 2>/dev/null; then
+if aws s3 ls s3://magistrala-react-assets-1750469494/ 2>/dev/null; then
     echo "Downloading React files from S3..."
-    sudo aws s3 sync s3://magistrala-react-assets/ /opt/magistrala/dashboard/
+    sudo aws s3 sync s3://magistrala-react-assets-1750469494/ /opt/magistrala/dashboard/
 else
     echo "Creating React dashboard from source..."
     # Clone the repository and build React app
     cd /tmp
-    git clone https://github.com/absmach/magistrala.git
-    cd magistrala/custom-dashboard
+    git clone https://github.com/RutwikPatel13/magistrala-choovio-pilot.git
+    cd magistrala-choovio-pilot/custom-dashboard
     
     # Install dependencies and build
     npm ci

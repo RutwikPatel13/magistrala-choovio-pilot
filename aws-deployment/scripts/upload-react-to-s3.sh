@@ -13,23 +13,13 @@ echo "Creating S3 bucket for React assets..."
 # Create S3 bucket
 aws s3 mb s3://$BUCKET_NAME --region $REGION
 
-# Enable public read access for static assets
-aws s3api put-bucket-policy --bucket $BUCKET_NAME --policy "{
-    \"Version\": \"2012-10-17\",
-    \"Statement\": [
-        {
-            \"Sid\": \"PublicReadGetObject\",
-            \"Effect\": \"Allow\",
-            \"Principal\": \"*\",
-            \"Action\": \"s3:GetObject\",
-            \"Resource\": \"arn:aws:s3:::$BUCKET_NAME/*\"
-        }
-    ]
-}"
+# Note: Skipping public bucket policy due to AWS account restrictions
+# The files will be accessible through EC2 deployment instead
+echo "Bucket created successfully. Files will be private and accessed via EC2."
 
 # Upload React build files
 echo "Uploading React build files to S3..."
-cd /Users/rutwik/choovio/magistrala/custom-dashboard
+cd /Users/rutwik/choovio/magistrala-pilot-clean/custom-dashboard
 
 # Build the React app if not already built
 if [ ! -d "build" ]; then
@@ -66,6 +56,7 @@ echo "S3 Bucket: $BUCKET_NAME"
 echo "Update your deployment script to use: s3://$BUCKET_NAME"
 
 # Update the deployment script with bucket name
+cd ../scripts
 sed -i.bak "s/magistrala-react-assets/$BUCKET_NAME/g" deploy-react-proper.sh
 
-echo "Deployment script updated with S3 bucket name"
+echo "Deployment script updated with S3 bucket name: $BUCKET_NAME"
