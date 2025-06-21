@@ -12,9 +12,13 @@ import {
   FiSearch,
   FiCalendar,
   FiTrendingUp,
-  FiZap
+  FiZap,
+  FiMonitor,
+  FiToggleLeft,
+  FiToggleRight
 } from 'react-icons/fi';
 import magistralaApi from '../services/magistralaApi';
+import RealtimeDashboard from '../components/RealtimeDashboard';
 
 const Container = styled.div`
   padding: 2rem;
@@ -512,13 +516,35 @@ const Messages = () => {
 
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingMessage, setViewingMessage] = useState(null);
+  
+  // Real-time monitoring state
+  const [showRealtimeMonitor, setShowRealtimeMonitor] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const [selectedThing, setSelectedThing] = useState('');
+  const [channels, setChannels] = useState([]);
+  const [things, setThings] = useState([]);
 
   const messagesPerPage = 10;
   const totalPages = Math.ceil(totalMessages / messagesPerPage);
 
   useEffect(() => {
     loadMessages();
+    loadChannelsAndThings();
   }, [currentPage, filters]);
+
+  const loadChannelsAndThings = async () => {
+    try {
+      const [channelsResponse, thingsResponse] = await Promise.all([
+        magistralaApi.getChannels(0, 100),
+        magistralaApi.getThings(0, 100)
+      ]);
+      
+      setChannels(channelsResponse.channels || []);
+      setThings(thingsResponse.things || []);
+    } catch (error) {
+      console.error('Failed to load channels and things:', error);
+    }
+  };
 
   const loadMessages = async () => {
     try {
@@ -695,6 +721,13 @@ const Messages = () => {
       <Header>
         <Title>Messages & Data</Title>
         <ActionButtons>
+          <ActionButton 
+            variant={showRealtimeMonitor ? "primary" : "secondary"} 
+            onClick={() => setShowRealtimeMonitor(!showRealtimeMonitor)}
+          >
+            {showRealtimeMonitor ? <FiToggleRight /> : <FiToggleLeft />} 
+            Real-time Monitor
+          </ActionButton>
           <ActionButton variant="secondary" onClick={handleRefresh}>
             <FiRefreshCw /> Refresh
           </ActionButton>
@@ -749,6 +782,53 @@ const Messages = () => {
           </div>
         </StatCard>
       </StatsGrid>
+
+      {showRealtimeMonitor && (
+        <>
+          <FiltersSection>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#2d3748', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FiMonitor /> Real-time Configuration
+            </h3>
+            <FiltersGrid>
+              <FilterGroup>
+                <Label>Select Channel</Label>
+                <Select
+                  value={selectedChannel}
+                  onChange={(e) => setSelectedChannel(e.target.value)}
+                >
+                  <option value="">Choose a channel...</option>
+                  {channels.map(channel => (
+                    <option key={channel.id} value={channel.id}>
+                      {channel.name || channel.id}
+                    </option>
+                  ))}
+                </Select>
+              </FilterGroup>
+              
+              <FilterGroup>
+                <Label>Select Thing (for credentials)</Label>
+                <Select
+                  value={selectedThing}
+                  onChange={(e) => setSelectedThing(e.target.value)}
+                >
+                  <option value="">Choose a thing...</option>
+                  {things.map(thing => (
+                    <option key={thing.id} value={thing.id}>
+                      {thing.name || thing.id}
+                    </option>
+                  ))}
+                </Select>
+              </FilterGroup>
+            </FiltersGrid>
+          </FiltersSection>
+          
+          <RealtimeDashboard
+            channelId={selectedChannel}
+            thingSecret={things.find(t => t.id === selectedThing)?.secret}
+            token={localStorage.getItem('magistrala_token')}
+          />
+        </>
+      )}
 
       <FiltersSection>
         <FiltersGrid>

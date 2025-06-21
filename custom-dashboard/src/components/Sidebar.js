@@ -14,7 +14,8 @@ import {
   FiShield,
   FiCode,
   FiServer,
-  FiBell
+  FiBell,
+  FiKey
 } from 'react-icons/fi';
 
 const SidebarContainer = styled.nav`
@@ -133,6 +134,10 @@ const Sidebar = () => {
         <NavItem to="/notifications">
           <FiBell className="nav-icon" />
           <span className="nav-text">Notifications</span>
+        </NavItem>
+        <NavItem to="/certificates">
+          <FiKey className="nav-icon" />
+          <span className="nav-text">Certificates</span>
         </NavItem>
       </SidebarSection>
       

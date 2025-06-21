@@ -22,6 +22,7 @@ import Profile from './pages/Profile';
 import RulesEngine from './pages/RulesEngine';
 import Bootstrap from './pages/Bootstrap';
 import Notifications from './pages/Notifications';
+import Certificates from './pages/Certificates';
 import { brandPresets } from './styles/theme';
 
 // Use Choovio theme with fallback to original colors
@@ -86,6 +87,7 @@ function App() {
                         <Route path="/rules" element={<RulesEngine />} />
                         <Route path="/bootstrap" element={<Bootstrap />} />
                         <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/certificates" element={<Certificates />} />
                       </Routes>
                     </ContentArea>
                   </MainContent>

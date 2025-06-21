@@ -3385,6 +3385,189 @@ return aggregated`,
       generated_at: new Date().toISOString()
     };
   }
+
+  // ===== MULTI-PROTOCOL MESSAGING SUPPORT =====
+  
+  async sendMessageViaCoAP(channelId, message, thingSecret) {
+    // CoAP support for Magistrala
+    // Note: This requires a CoAP client library for full implementation
+    console.log('📡 CoAP messaging not yet implemented in browser environment');
+    console.log('CoAP is typically used in IoT devices, not web browsers');
+    
+    // For demonstration, we'll provide the CoAP endpoint info
+    const coapPort = process.env.REACT_APP_MAGISTRALA_COAP_PORT || '5683';
+    const coapURL = `coap://${this.baseURL.replace('http://', '').replace('https://', '')}:${coapPort}`;
+    
+    return {
+      success: false,
+      message: 'CoAP not supported in browser environment',
+      info: {
+        endpoint: `${coapURL}/channels/${channelId}/messages`,
+        description: 'CoAP is designed for constrained devices and typically not used from browsers',
+        alternative: 'Use HTTP, WebSocket, or MQTT protocols instead'
+      }
+    };
+  }
+
+  async sendMessageViaWebSocket(channelId, message, token) {
+    // WebSocket messaging is handled by the realtimeService
+    console.log('📡 WebSocket messaging should be handled via realtimeService');
+    
+    const wsPort = process.env.REACT_APP_MAGISTRALA_WS_PORT || '8186';
+    const wsURL = `ws://${this.baseURL.replace('http://', '').replace('https://', '')}:${wsPort}`;
+    
+    return {
+      success: false,
+      message: 'Use realtimeService for WebSocket messaging',
+      info: {
+        endpoint: `${wsURL}/channels/${channelId}/messages`,
+        service: 'realtimeService.connectWebSocket()',
+        description: 'WebSocket connections require persistent connection management'
+      }
+    };
+  }
+
+  // Multi-protocol message sending with protocol detection
+  async sendMessageMultiProtocol(channelId, message, options = {}) {
+    const { 
+      protocol = 'http', 
+      thingSecret, 
+      token = this.token,
+      subtopic = 'data',
+      contentType = 'application/senml+json'
+    } = options;
+
+    console.log(`📤 Sending message via ${protocol.toUpperCase()} to channel ${channelId}`);
+
+    switch (protocol.toLowerCase()) {
+      case 'http':
+        return this.sendMessage(channelId, message, thingSecret);
+      
+      case 'mqtt':
+        // MQTT is handled by realtimeService
+        console.log('📡 MQTT messaging should be handled via realtimeService');
+        return {
+          success: false,
+          message: 'Use realtimeService for MQTT messaging',
+          info: {
+            service: 'realtimeService.publishMessage()',
+            description: 'MQTT requires persistent connection management'
+          }
+        };
+      
+      case 'websocket':
+        return this.sendMessageViaWebSocket(channelId, message, token);
+      
+      case 'coap':
+        return this.sendMessageViaCoAP(channelId, message, thingSecret);
+      
+      default:
+        throw new Error(`Unsupported protocol: ${protocol}`);
+    }
+  }
+
+  // Get available protocols for a channel
+  getAvailableProtocols(channelMetadata = {}) {
+    const protocols = [
+      {
+        name: 'HTTP',
+        key: 'http',
+        port: process.env.REACT_APP_MAGISTRALA_HTTP_PORT || '8008',
+        description: 'RESTful HTTP messaging with SenML format',
+        supported: true,
+        browserCompatible: true
+      },
+      {
+        name: 'MQTT',
+        key: 'mqtt',
+        port: process.env.REACT_APP_MAGISTRALA_MQTT_PORT || '1883',
+        description: 'MQTT publish/subscribe messaging',
+        supported: true,
+        browserCompatible: true,
+        requiresWebSocket: true
+      },
+      {
+        name: 'WebSocket',
+        key: 'websocket',
+        port: process.env.REACT_APP_MAGISTRALA_WS_PORT || '8186',
+        description: 'Real-time WebSocket messaging',
+        supported: true,
+        browserCompatible: true
+      },
+      {
+        name: 'CoAP',
+        key: 'coap',
+        port: process.env.REACT_APP_MAGISTRALA_COAP_PORT || '5683',
+        description: 'Constrained Application Protocol (UDP-based)',
+        supported: false,
+        browserCompatible: false,
+        note: 'Not supported in browser environment'
+      },
+      {
+        name: 'LoRaWAN',
+        key: 'lorawan',
+        port: 'N/A',
+        description: 'Long Range Wide Area Network protocol',
+        supported: true,
+        browserCompatible: false,
+        note: 'Requires LoRaWAN gateway and network server'
+      }
+    ];
+
+    // Filter based on channel metadata if specific protocols are configured
+    if (channelMetadata && channelMetadata.protocols) {
+      const enabledProtocols = channelMetadata.protocols;
+      return protocols.filter(p => enabledProtocols.includes(p.key));
+    }
+
+    return protocols;
+  }
+
+  // Protocol-specific endpoint generation
+  getProtocolEndpoint(protocol, channelId, subtopic = 'data') {
+    const baseHost = this.baseURL.replace('http://', '').replace('https://', '');
+    
+    switch (protocol.toLowerCase()) {
+      case 'http':
+        return `${this.httpURL}/channels/${channelId}/messages/${subtopic}`;
+      
+      case 'mqtt':
+        const mqttPort = process.env.REACT_APP_MAGISTRALA_MQTT_PORT || '1883';
+        return {
+          broker: `${baseHost}:${mqttPort}`,
+          topic: `channels/${channelId}/messages/${subtopic}`,
+          websocketBroker: `ws://${baseHost}:9001` // MQTT over WebSocket
+        };
+      
+      case 'websocket':
+        const wsPort = process.env.REACT_APP_MAGISTRALA_WS_PORT || '8186';
+        return `ws://${baseHost}:${wsPort}/channels/${channelId}/messages`;
+      
+      case 'coap':
+        const coapPort = process.env.REACT_APP_MAGISTRALA_COAP_PORT || '5683';
+        return `coap://${baseHost}:${coapPort}/channels/${channelId}/messages/${subtopic}`;
+      
+      default:
+        throw new Error(`Unknown protocol: ${protocol}`);
+    }
+  }
+
+  // Enhanced protocol detection from channel metadata
+  detectPreferredProtocol(channelMetadata = {}) {
+    // Check for explicit protocol preference in metadata
+    if (channelMetadata.preferred_protocol) {
+      return channelMetadata.preferred_protocol;
+    }
+    
+    // Check for protocol-specific configuration
+    if (channelMetadata.mqtt_config) return 'mqtt';
+    if (channelMetadata.websocket_config) return 'websocket';
+    if (channelMetadata.coap_config) return 'coap';
+    if (channelMetadata.lorawan_config) return 'lorawan';
+    
+    // Default to HTTP for maximum compatibility
+    return 'http';
+  }
 }
 
 export default new MagistralaAPI();
