@@ -11,7 +11,10 @@ import {
   FiRadio,
   FiMessageSquare,
   FiUsers,
-  FiShield
+  FiShield,
+  FiCode,
+  FiServer,
+  FiBell
 } from 'react-icons/fi';
 
 const SidebarContainer = styled.nav`
@@ -114,6 +117,22 @@ const Sidebar = () => {
         <NavItem to="/data">
           <FiDatabase className="nav-icon" />
           <span className="nav-text">Data Storage</span>
+        </NavItem>
+      </SidebarSection>
+      
+      <SidebarSection>
+        <SectionTitle>Advanced Services</SectionTitle>
+        <NavItem to="/rules">
+          <FiCode className="nav-icon" />
+          <span className="nav-text">Rules Engine</span>
+        </NavItem>
+        <NavItem to="/bootstrap">
+          <FiServer className="nav-icon" />
+          <span className="nav-text">Bootstrap</span>
+        </NavItem>
+        <NavItem to="/notifications">
+          <FiBell className="nav-icon" />
+          <span className="nav-text">Notifications</span>
         </NavItem>
       </SidebarSection>
       
