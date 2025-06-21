@@ -5,17 +5,11 @@
 
 set -e
 
-BUCKET_NAME="magistrala-react-assets-$(date +%s)"
+BUCKET_NAME="choovio-iot-dashboard-1750453820"
 REGION="us-east-1"
 
-echo "Creating S3 bucket for React assets..."
-
-# Create S3 bucket
-aws s3 mb s3://$BUCKET_NAME --region $REGION
-
-# Note: Skipping public bucket policy due to AWS account restrictions
-# The files will be accessible through EC2 deployment instead
-echo "Bucket created successfully. Files will be private and accessed via EC2."
+echo "Updating existing S3 bucket for React assets..."
+echo "Using existing bucket: $BUCKET_NAME"
 
 # Upload React build files
 echo "Uploading React build files to S3..."
@@ -55,8 +49,6 @@ echo "✅ React files uploaded successfully!"
 echo "S3 Bucket: $BUCKET_NAME"
 echo "Update your deployment script to use: s3://$BUCKET_NAME"
 
-# Update the deployment script with bucket name
-cd ../scripts
-sed -i.bak "s/magistrala-react-assets/$BUCKET_NAME/g" deploy-react-proper.sh
-
-echo "Deployment script updated with S3 bucket name: $BUCKET_NAME"
+echo "✅ Updated existing React deployment successfully!"
+echo "S3 Bucket: $BUCKET_NAME"
+echo "Website URL: http://$BUCKET_NAME.s3-website-$REGION.amazonaws.com/"
