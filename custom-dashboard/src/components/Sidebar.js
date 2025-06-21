@@ -7,7 +7,11 @@ import {
   FiBarChart, 
   FiSettings,
   FiWifi,
-  FiDatabase
+  FiDatabase,
+  FiRadio,
+  FiMessageSquare,
+  FiUsers,
+  FiShield
 } from 'react-icons/fi';
 
 const SidebarContainer = styled.nav`
@@ -95,13 +99,33 @@ const Sidebar = () => {
       
       <SidebarSection>
         <SectionTitle>IoT Platform</SectionTitle>
+        <NavItem to="/lorawan">
+          <FiRadio className="nav-icon" />
+          <span className="nav-text">LoRaWAN Network</span>
+        </NavItem>
         <NavItem to="/channels">
           <FiWifi className="nav-icon" />
           <span className="nav-text">Channels</span>
         </NavItem>
+        <NavItem to="/messages">
+          <FiMessageSquare className="nav-icon" />
+          <span className="nav-text">Messages</span>
+        </NavItem>
         <NavItem to="/data">
           <FiDatabase className="nav-icon" />
           <span className="nav-text">Data Storage</span>
+        </NavItem>
+      </SidebarSection>
+      
+      <SidebarSection>
+        <SectionTitle>Management</SectionTitle>
+        <NavItem to="/users">
+          <FiUsers className="nav-icon" />
+          <span className="nav-text">User Management</span>
+        </NavItem>
+        <NavItem to="/security">
+          <FiShield className="nav-icon" />
+          <span className="nav-text">Security</span>
         </NavItem>
       </SidebarSection>
       
