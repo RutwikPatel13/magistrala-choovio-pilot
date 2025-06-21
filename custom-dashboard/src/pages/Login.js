@@ -245,6 +245,21 @@ const DemoCredentials = styled.div`
     color: #2c5282;
     margin: 0.25rem 0;
   }
+
+  .api-info {
+    background: #f0f9ff;
+    border: 1px solid #7dd3fc;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    color: #0c4a6e;
+    
+    .api-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+  }
 `;
 
 const Login = () => {
@@ -267,22 +282,21 @@ const Login = () => {
     setSuccess('');
 
     try {
-      const response = await magistralaApi.login(formData.email, formData.password);
+      // Use the enhanced AuthContext login method
+      const result = await login(formData.email, formData.password);
       
-      if (response.token && response.user) {
-        // Use AuthContext login method
-        login(response.token, response.user);
-        setSuccess('Login successful! Redirecting...');
+      if (result.success) {
+        setSuccess(`Login successful via ${result.endpoint}! Redirecting...`);
         
         // Redirect to the original destination or dashboard
         const from = location.state?.from?.pathname || '/';
         setTimeout(() => navigate(from), 1500);
       } else {
-        throw new Error('Invalid credentials');
+        setError(result.error || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError('Invalid email or password. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -324,10 +338,16 @@ const Login = () => {
         <DemoCredentials>
           <div className="demo-title">
             <FiShield size={16} />
-            Demo Credentials
+            Magistrala Authentication
           </div>
           <div className="demo-item">
-            <strong>Admin:</strong> admin@choovio.com / admin123 
+            • Use your Magistrala user credentials (created via platform or CLI)
+          </div>
+          <div className="demo-item">
+            • Or users created via the signup page (stored locally)
+          </div>
+          <div className="demo-item">
+            <strong>Demo fallback:</strong> admin@choovio.com / admin123
             <button 
               type="button" 
               onClick={() => fillDemoCredentials('admin')}
@@ -344,23 +364,12 @@ const Login = () => {
               (Use)
             </button>
           </div>
-          <div className="demo-item">
-            <strong>User:</strong> user@choovio.com / user123
-            <button 
-              type="button" 
-              onClick={() => fillDemoCredentials('user')}
-              style={{ 
-                marginLeft: '8px', 
-                background: 'none', 
-                border: 'none', 
-                color: '#2C5282', 
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                fontSize: '0.8rem'
-              }}
-            >
-              (Use)
-            </button>
+          <div className="api-info">
+            <div className="api-title">Enhanced Authentication Features</div>
+            • JWT token management with automatic refresh<br/>
+            • Multi-endpoint authentication (proxy and direct)<br/>
+            • Secure token storage and expiration handling<br/>
+            • Fallback to demo mode for testing
           </div>
         </DemoCredentials>
 

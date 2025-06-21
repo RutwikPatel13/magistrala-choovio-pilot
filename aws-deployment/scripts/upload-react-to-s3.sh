@@ -5,31 +5,15 @@
 
 set -e
 
-BUCKET_NAME="magistrala-react-assets-$(date +%s)"
+BUCKET_NAME="choovio-iot-dashboard-1750453820"
 REGION="us-east-1"
 
-echo "Creating S3 bucket for React assets..."
-
-# Create S3 bucket
-aws s3 mb s3://$BUCKET_NAME --region $REGION
-
-# Enable public read access for static assets
-aws s3api put-bucket-policy --bucket $BUCKET_NAME --policy "{
-    \"Version\": \"2012-10-17\",
-    \"Statement\": [
-        {
-            \"Sid\": \"PublicReadGetObject\",
-            \"Effect\": \"Allow\",
-            \"Principal\": \"*\",
-            \"Action\": \"s3:GetObject\",
-            \"Resource\": \"arn:aws:s3:::$BUCKET_NAME/*\"
-        }
-    ]
-}"
+echo "Updating existing S3 bucket for React assets..."
+echo "Using existing bucket: $BUCKET_NAME"
 
 # Upload React build files
 echo "Uploading React build files to S3..."
-cd /Users/rutwik/choovio/magistrala/custom-dashboard
+cd /Users/rutwik/choovio/magistrala-pilot-clean/custom-dashboard
 
 # Build the React app if not already built
 if [ ! -d "build" ]; then
@@ -65,7 +49,6 @@ echo "✅ React files uploaded successfully!"
 echo "S3 Bucket: $BUCKET_NAME"
 echo "Update your deployment script to use: s3://$BUCKET_NAME"
 
-# Update the deployment script with bucket name
-sed -i.bak "s/magistrala-react-assets/$BUCKET_NAME/g" deploy-react-proper.sh
-
-echo "Deployment script updated with S3 bucket name"
+echo "✅ Updated existing React deployment successfully!"
+echo "S3 Bucket: $BUCKET_NAME"
+echo "Website URL: http://$BUCKET_NAME.s3-website-$REGION.amazonaws.com/"
