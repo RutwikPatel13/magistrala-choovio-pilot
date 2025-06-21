@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FiCheckCircle, FiXCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
+import { FiCheckCircle, FiXCircle, FiAlertCircle, FiRefreshCw, FiX } from 'react-icons/fi';
 
 const TestContainer = styled.div`
   position: fixed;
@@ -74,6 +74,7 @@ const TestStatus = () => {
     routing: { status: 'loading', message: 'Testing routing...' },
     mockData: { status: 'loading', message: 'Loading mock data...' }
   });
+  const [isVisible, setIsVisible] = useState(true);
 
   const runTests = async () => {
     setTests({
@@ -140,13 +141,22 @@ const TestStatus = () => {
 
   const allPassed = Object.values(tests).every(test => test.status === 'success');
 
+  if (!isVisible) return null;
+
   return (
     <TestContainer>
       <TestHeader>
         <h3>Test Status</h3>
-        <RefreshButton onClick={runTests}>
-          <FiRefreshCw size={16} />
-        </RefreshButton>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <RefreshButton onClick={runTests}>
+            <FiRefreshCw size={16} />
+          </RefreshButton>
+          {allPassed && (
+            <RefreshButton onClick={() => setIsVisible(false)} title="Close">
+              <FiX size={16} />
+            </RefreshButton>
+          )}
+        </div>
       </TestHeader>
       
       {Object.entries(tests).map(([key, test]) => (
