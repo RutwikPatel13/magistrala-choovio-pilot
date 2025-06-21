@@ -8,6 +8,12 @@ import Dashboard from './pages/Dashboard';
 import DeviceManagement from './pages/DeviceManagement';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import LoRaWANManagement from './pages/LoRaWANManagement';
+import Channels from './pages/Channels';
+import Messages from './pages/Messages';
+import DataStorage from './pages/DataStorage';
+import UserManagement from './pages/UserManagement';
+import Security from './pages/Security';
 import { brandPresets } from './styles/theme';
 
 // Use Choovio theme with fallback to original colors
@@ -51,6 +57,12 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/devices" element={<DeviceManagement />} />
+                <Route path="/lorawan" element={<LoRaWANManagement />} />
+                <Route path="/channels" element={<Channels />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/data" element={<DataStorage />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/security" element={<Security />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
