@@ -317,6 +317,8 @@ const Channels = () => {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingChannel, setViewingChannel] = useState(null);
   const [editingChannel, setEditingChannel] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -459,6 +461,11 @@ const Channels = () => {
       metadata: ''
     });
     setShowModal(true);
+  };
+
+  const handleViewChannel = (channel) => {
+    setViewingChannel(channel);
+    setShowViewModal(true);
   };
 
   const handleEditChannel = (channel) => {
@@ -605,7 +612,7 @@ const Channels = () => {
                 </div>
               </div>
               <ChannelActions>
-                <SmallActionButton onClick={() => alert(`Viewing channel ${channel.name}`)}>
+                <SmallActionButton onClick={() => handleViewChannel(channel)}>
                   <FiEye />
                 </SmallActionButton>
                 <SmallActionButton onClick={() => handleEditChannel(channel)}>
@@ -725,6 +732,111 @@ const Channels = () => {
                 </Button>
               </ButtonGroup>
             </Form>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {showViewModal && viewingChannel && (
+        <Modal onClick={() => setShowViewModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <h2>Channel Details</h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <Label>Channel Name</Label>
+                  <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px', fontWeight: '500' }}>
+                    {viewingChannel.name}
+                  </div>
+                </div>
+                <div>
+                  <Label>Channel ID</Label>
+                  <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                    {viewingChannel.id}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <Label>Protocol</Label>
+                  <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px' }}>
+                    <ProtocolBadge protocol={viewingChannel.protocol}>
+                      {viewingChannel.protocol}
+                    </ProtocolBadge>
+                  </div>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ 
+                      display: 'inline-block',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: viewingChannel.status === 'active' ? '#10b981' : '#ef4444'
+                    }}></span>
+                    <span style={{ color: viewingChannel.status === 'active' ? '#10b981' : '#ef4444', fontWeight: '500' }}>
+                      {viewingChannel.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <Label>Topic</Label>
+                <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px', fontFamily: 'monospace' }}>
+                  {viewingChannel.topic}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <Label>Description</Label>
+                <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px', minHeight: '60px' }}>
+                  {viewingChannel.description || 'No description provided'}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ textAlign: 'center', padding: '1rem', background: '#f7fafc', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2C5282' }}>
+                    {viewingChannel.connectedDevices}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#718096' }}>Connected Devices</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: '1rem', background: '#f7fafc', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2C5282' }}>
+                    {viewingChannel.messagesTotal}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#718096' }}>Total Messages</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: '1rem', background: '#f7fafc', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2C5282' }}>
+                    {formatLastActivity(viewingChannel.lastActivity)}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#718096' }}>Last Activity</div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <Label>Metadata</Label>
+                <div style={{ padding: '0.75rem', background: '#f7fafc', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.9rem', maxHeight: '200px', overflowY: 'auto' }}>
+                  <pre>{JSON.stringify(viewingChannel.metadata, null, 2)}</pre>
+                </div>
+              </div>
+            </div>
+
+            <ButtonGroup>
+              <Button type="button" onClick={() => setShowViewModal(false)}>
+                Close
+              </Button>
+              <Button type="button" variant="primary" onClick={() => {
+                setShowViewModal(false);
+                handleEditChannel(viewingChannel);
+              }}>
+                Edit Channel
+              </Button>
+            </ButtonGroup>
           </ModalContent>
         </Modal>
       )}
