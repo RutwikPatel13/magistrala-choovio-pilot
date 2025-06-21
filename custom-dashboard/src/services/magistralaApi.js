@@ -203,9 +203,28 @@ class MagistralaAPI {
     }
   }
 
-  // Magistrala JWT Authentication
+  // Magistrala JWT Authentication with demo fallback
   async login(email, password, domainId = null) {
     console.log('🔑 Starting Magistrala authentication...');
+    
+    // Demo fallback for when no Magistrala instance is running
+    if (email === 'demo@magistrala.com' && password === 'demo123') {
+      console.log('🎭 Demo login - no Magistrala instance required');
+      const demoToken = 'demo_token_' + Date.now();
+      this.token = demoToken;
+      localStorage.setItem('magistrala_token', demoToken);
+      return {
+        token: demoToken,
+        user: {
+          id: 'demo-user',
+          name: 'Demo User',
+          email: 'demo@magistrala.com',
+          role: 'Administrator'
+        },
+        success: true,
+        endpoint: 'demo_fallback'
+      };
+    }
     
     console.log('🌐 Attempting Magistrala JWT authentication...');
     
@@ -280,7 +299,8 @@ class MagistralaAPI {
       }
     }
     
-    throw new Error('Authentication failed. Please check your credentials and ensure your Magistrala instance is running and accessible.');
+    console.warn('⚠️ No Magistrala instance detected. Use demo@magistrala.com / demo123 for demo mode.');
+    throw new Error('Authentication failed. No Magistrala instance found. Use demo@magistrala.com / demo123 for demo mode, or start a Magistrala instance.');
   }
 
   async createUser(user) {
@@ -424,6 +444,39 @@ class MagistralaAPI {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
+    
+    // Demo mode fallback
+    if (this.token && this.token.startsWith('demo_token_')) {
+      console.log('🎭 Demo mode: returning sample devices');
+      return {
+        clients: [
+          {
+            id: 'demo-device-001',
+            name: 'Demo Temperature Sensor',
+            status: 'online',
+            metadata: {
+              type: 'sensor',
+              protocol: 'mqtt',
+              location: 'Demo Location',
+              lastSeen: new Date().toISOString()
+            }
+          },
+          {
+            id: 'demo-device-002', 
+            name: 'Demo LoRaWAN Gateway',
+            status: 'online',
+            metadata: {
+              type: 'lorawan',
+              protocol: 'lorawan',
+              location: 'Demo Building',
+              devEUI: '0011223344556677',
+              lastSeen: new Date().toISOString()
+            }
+          }
+        ],
+        total: 2
+      };
+    }
 
     try {
       console.log('🔍 Fetching things from Magistrala API...');
@@ -531,6 +584,18 @@ class MagistralaAPI {
     
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
+    }
+    
+    // Demo mode fallback
+    if (this.token && this.token.startsWith('demo_token_')) {
+      console.log('🎭 Demo mode: simulating device creation');
+      return {
+        id: 'demo-device-' + Date.now(),
+        name: device.name,
+        status: 'online',
+        metadata: device.metadata || {},
+        created_at: new Date().toISOString()
+      };
     }
 
     try {
@@ -721,6 +786,28 @@ class MagistralaAPI {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
+    
+    // Demo mode fallback
+    if (this.token && this.token.startsWith('demo_token_')) {
+      console.log('🎭 Demo mode: returning sample channels');
+      return {
+        channels: [
+          {
+            id: 'demo-channel-001',
+            name: 'Demo MQTT Channel',
+            description: 'Sample MQTT communication channel',
+            status: 'active',
+            protocol: 'mqtt',
+            topic: '/demo/mqtt',
+            metadata: { type: 'mqtt' },
+            created_at: new Date().toISOString(),
+            connectedDevices: 2,
+            messagesTotal: 150
+          }
+        ],
+        total: 1
+      };
+    }
 
     try {
       console.log('🔍 Fetching channels from Magistrala API...');
@@ -821,6 +908,21 @@ class MagistralaAPI {
   async createChannel(channel) {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
+    }
+    
+    // Demo mode fallback
+    if (this.token && this.token.startsWith('demo_token_')) {
+      console.log('🎭 Demo mode: simulating channel creation');
+      return {
+        id: 'demo-channel-' + Date.now(),
+        name: channel.name,
+        description: channel.description,
+        protocol: channel.protocol || 'mqtt',
+        status: 'active',
+        created_at: new Date().toISOString(),
+        connectedDevices: 0,
+        messagesTotal: 0
+      };
     }
 
     try {
@@ -990,6 +1092,26 @@ class MagistralaAPI {
   async getMessages(channelId, offset = 0, limit = 100) {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
+    }
+    
+    // Demo mode fallback
+    if (this.token && this.token.startsWith('demo_token_')) {
+      console.log('🎭 Demo mode: returning sample messages');
+      return {
+        messages: [
+          {
+            id: 'demo-msg-001',
+            channelId: channelId,
+            channelName: 'Demo Channel',
+            protocol: 'mqtt',
+            payload: JSON.stringify({ temperature: 22.5, humidity: 60 }, null, 2),
+            timestamp: new Date().toISOString(),
+            publisher: 'demo-device-001',
+            topic: '/demo/data'
+          }
+        ],
+        total: 1
+      };
     }
 
     try {
