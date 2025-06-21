@@ -282,22 +282,21 @@ const Login = () => {
     setSuccess('');
 
     try {
-      const response = await magistralaApi.login(formData.email, formData.password);
+      // Use the enhanced AuthContext login method
+      const result = await login(formData.email, formData.password);
       
-      if (response.token && response.user) {
-        // Use AuthContext login method
-        login(response.token, response.user);
-        setSuccess('Login successful! Redirecting...');
+      if (result.success) {
+        setSuccess(`Login successful via ${result.endpoint}! Redirecting...`);
         
         // Redirect to the original destination or dashboard
         const from = location.state?.from?.pathname || '/';
         setTimeout(() => navigate(from), 1500);
       } else {
-        throw new Error('Invalid credentials');
+        setError(result.error || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError('Invalid email or password. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -342,7 +341,10 @@ const Login = () => {
             Magistrala Authentication
           </div>
           <div className="demo-item">
-            Use your Magistrala user credentials created via the platform
+            • Use your Magistrala user credentials (created via platform or CLI)
+          </div>
+          <div className="demo-item">
+            • Or users created via the signup page (stored locally)
           </div>
           <div className="demo-item">
             <strong>Demo fallback:</strong> admin@choovio.com / admin123
@@ -363,8 +365,11 @@ const Login = () => {
             </button>
           </div>
           <div className="api-info">
-            <div className="api-title">API Integration</div>
-            This dashboard integrates with Magistrala's authentication API (/users/tokens/issue) for secure user login and token management.
+            <div className="api-title">Enhanced Authentication Features</div>
+            • JWT token management with automatic refresh<br/>
+            • Multi-endpoint authentication (proxy and direct)<br/>
+            • Secure token storage and expiration handling<br/>
+            • Fallback to demo mode for testing
           </div>
         </DemoCredentials>
 
