@@ -4,15 +4,19 @@
 class MagistralaAPI {
   constructor(baseURL = 'http://44.196.96.48') {
     this.baseURL = baseURL;
-    this.usersURL = `${baseURL}:9002`; // Users service port
+    // Try internal API first, fallback to external ports
+    this.usersURL = `${baseURL}/api/v1/users`; // Try proxied path first
+    this.thingsURL = `${baseURL}/api/v1/things`; // Try proxied path first
+    this.externalUsersURL = `${baseURL}:9002`; // Fallback to external port
+    this.externalThingsURL = `${baseURL}:9000`; // Fallback to external port
     this.token = localStorage.getItem('magistrala_token');
   }
 
   // Authentication Management
   async login(email, password) {
     try {
-      // Use Magistrala's /users/tokens/issue endpoint
-      const response = await fetch(`${this.usersURL}/users/tokens/issue`, {
+      // Try proxied API path first
+      let response = await fetch(`${this.usersURL}/tokens/issue`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -21,9 +25,23 @@ class MagistralaAPI {
           identity: email,
           secret: password,
         }),
-      });
+      }).catch(() => null);
       
-      if (response.ok) {
+      // If proxied path fails, try external port
+      if (!response || !response.ok) {
+        response = await fetch(`${this.externalUsersURL}/users/tokens/issue`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            identity: email,
+            secret: password,
+          }),
+        }).catch(() => null);
+      }
+      
+      if (response && response.ok) {
         const data = await response.json();
         this.token = data.access_token;
         localStorage.setItem('magistrala_token', this.token);
@@ -36,35 +54,36 @@ class MagistralaAPI {
           user: userData,
           success: true
         };
-      } else {
+      } else if (response) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'Authentication failed');
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Fallback to demo credentials for development
-      if (email === 'admin@choovio.com' && password === 'admin123') {
-        const mockToken = 'demo_token_' + Date.now();
-        const userData = {
-          id: 'user-001',
-          name: 'Admin User',
-          email: 'admin@choovio.com',
-          role: 'Administrator'
-        };
-        
-        this.token = mockToken;
-        localStorage.setItem('magistrala_token', mockToken);
-        localStorage.setItem('magistrala_user', JSON.stringify(userData));
-        
-        return {
-          token: mockToken,
-          user: userData,
-          success: true
-        };
-      }
-      
-      throw new Error('Invalid email or password');
     }
+    
+    // Fallback to demo credentials for development/testing
+    if (email === 'admin@choovio.com' && password === 'admin123') {
+      const mockToken = 'demo_token_' + Date.now();
+      const userData = {
+        id: 'user-001',
+        name: 'Admin User',
+        email: 'admin@choovio.com',
+        role: 'Administrator'
+      };
+      
+      this.token = mockToken;
+      localStorage.setItem('magistrala_token', mockToken);
+      localStorage.setItem('magistrala_user', JSON.stringify(userData));
+      
+      return {
+        token: mockToken,
+        user: userData,
+        success: true
+      };
+    }
+    
+    throw new Error('Invalid email or password. Please use valid Magistrala credentials or demo: admin@choovio.com/admin123');
   }
 
   async createUser(user) {
