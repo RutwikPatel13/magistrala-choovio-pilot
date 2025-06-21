@@ -288,9 +288,13 @@ const DeviceManagement = () => {
     try {
       setLoading(true);
       const response = await magistralaApi.getDevices();
-      setDevices(response.clients || []);
+      // Handle both 'things' (Magistrala format) and 'clients' (legacy format)
+      setDevices(response.things || response.clients || []);
+      console.log('✅ Loaded devices:', response.things?.length || response.clients?.length || 0);
     } catch (error) {
       console.error('Failed to load devices:', error);
+      // Fallback to empty array to prevent UI crashes
+      setDevices([]);
     } finally {
       setLoading(false);
     }
