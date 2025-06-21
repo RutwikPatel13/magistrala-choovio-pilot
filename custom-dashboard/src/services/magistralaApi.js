@@ -4,59 +4,78 @@
 class MagistralaAPI {
   constructor(baseURL = 'http://44.196.96.48') {
     this.baseURL = baseURL;
-    // Try internal API first, fallback to external ports
-    this.usersURL = `${baseURL}/api/v1/users`; // Try proxied path first
-    this.thingsURL = `${baseURL}/api/v1/things`; // Try proxied path first
-    this.externalUsersURL = `${baseURL}:9002`; // Fallback to external port
-    this.externalThingsURL = `${baseURL}:9000`; // Fallback to external port
+    // Primary: Nginx proxy endpoints (recommended)
+    this.usersURL = `${baseURL}/api/v1/users`;
+    this.thingsURL = `${baseURL}/api/v1/things`;
+    this.channelsURL = `${baseURL}/api/v1/channels`;
+    
+    // Fallback: Direct service ports (if proxy not available)
+    this.externalUsersURL = `${baseURL}:9002`;
+    this.externalThingsURL = `${baseURL}:9000`;
+    this.externalChannelsURL = `${baseURL}:9005`;
+    
     this.token = localStorage.getItem('magistrala_token');
+    
+    // Track which endpoint is working for optimal performance
+    this.workingEndpoint = localStorage.getItem('magistrala_working_endpoint') || 'proxy';
   }
 
   // Authentication Management
   async login(email, password) {
+    const endpoints = [
+      { url: `${this.usersURL}/tokens/issue`, type: 'proxy' },
+      { url: `${this.externalUsersURL}/users/tokens/issue`, type: 'direct' }
+    ];
+    
+    // Try the last working endpoint first
+    if (this.workingEndpoint === 'direct') {
+      endpoints.reverse();
+    }
+    
     try {
-      // Try proxied API path first
-      let response = await fetch(`${this.usersURL}/tokens/issue`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identity: email,
-          secret: password,
-        }),
-      }).catch(() => null);
-      
-      // If proxied path fails, try external port
-      if (!response || !response.ok) {
-        response = await fetch(`${this.externalUsersURL}/users/tokens/issue`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            identity: email,
-            secret: password,
-          }),
-        }).catch(() => null);
-      }
-      
-      if (response && response.ok) {
-        const data = await response.json();
-        this.token = data.access_token;
-        localStorage.setItem('magistrala_token', this.token);
-        
-        // Get user info using the token
-        const userData = await this.getUserInfo();
-        return {
-          token: data.access_token,
-          refresh_token: data.refresh_token,
-          user: userData,
-          success: true
-        };
-      } else if (response) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Authentication failed');
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔐 Attempting authentication via ${endpoint.type}: ${endpoint.url}`);
+          
+          const response = await fetch(endpoint.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              identity: email,
+              secret: password,
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Remember which endpoint worked
+            localStorage.setItem('magistrala_working_endpoint', endpoint.type);
+            this.workingEndpoint = endpoint.type;
+            
+            this.token = data.access_token;
+            localStorage.setItem('magistrala_token', this.token);
+            
+            // Get user info using the token
+            const userData = await this.getUserInfo();
+            
+            console.log(`✅ Authentication successful via ${endpoint.type}`);
+            return {
+              token: data.access_token,
+              refresh_token: data.refresh_token,
+              user: userData,
+              success: true,
+              endpoint: endpoint.type
+            };
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.log(`❌ Authentication failed via ${endpoint.type}: ${errorData.message || response.statusText}`);
+          }
+        } catch (fetchError) {
+          console.log(`🔌 Connection failed to ${endpoint.type}: ${fetchError.message}`);
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -64,6 +83,7 @@ class MagistralaAPI {
     
     // Fallback to demo credentials for development/testing
     if (email === 'admin@choovio.com' && password === 'admin123') {
+      console.log('🎭 Using demo authentication fallback');
       const mockToken = 'demo_token_' + Date.now();
       const userData = {
         id: 'user-001',
@@ -79,11 +99,12 @@ class MagistralaAPI {
       return {
         token: mockToken,
         user: userData,
-        success: true
+        success: true,
+        endpoint: 'demo'
       };
     }
     
-    throw new Error('Invalid email or password. Please use valid Magistrala credentials or demo: admin@choovio.com/admin123');
+    throw new Error('Authentication failed. Please check your credentials or use demo: admin@choovio.com/admin123');
   }
 
   async createUser(user) {
