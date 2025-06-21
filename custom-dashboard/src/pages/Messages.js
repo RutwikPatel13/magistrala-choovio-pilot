@@ -367,6 +367,129 @@ const PaginationButton = styled.button`
   }
 `;
 
+const Modal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  
+  h2 {
+    margin: 0;
+    color: #2d3748;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #718096;
+  
+  &:hover {
+    color: #2d3748;
+  }
+`;
+
+const MessageDetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const DetailItem = styled.div`
+  .label {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+  }
+  
+  .value {
+    padding: 0.75rem;
+    background: #f7fafc;
+    border-radius: 6px;
+    font-family: ${props => props.mono ? 'monospace' : 'inherit'};
+    font-size: ${props => props.mono ? '0.9rem' : '1rem'};
+  }
+`;
+
+const PayloadContainer = styled.div`
+  .label {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+  }
+  
+  .payload {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+`;
+
+const Button = styled.button`
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  ${props => props.variant === 'primary' ? `
+    background: linear-gradient(135deg, #2C5282, #3182CE);
+    color: white;
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(44, 82, 130, 0.3);
+    }
+  ` : `
+    background: #f7fafc;
+    color: #4a5568;
+    border: 1px solid #e2e8f0;
+    &:hover {
+      background: #edf2f7;
+    }
+  `}
+`;
+
 const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -387,7 +510,11 @@ const Messages = () => {
     activeChannels: 0
   });
 
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingMessage, setViewingMessage] = useState(null);
+
   const messagesPerPage = 10;
+  const totalPages = Math.ceil(totalMessages / messagesPerPage);
 
   useEffect(() => {
     loadMessages();
@@ -524,11 +651,16 @@ const Messages = () => {
   };
 
   const handleViewMessage = (message) => {
-    alert(`Message Details:\n\nChannel: ${message.channelName}\nProtocol: ${message.protocol}\nTimestamp: ${new Date(message.timestamp).toLocaleString()}\n\nPayload:\n${message.payload}`);
+    setViewingMessage(message);
+    setShowViewModal(true);
   };
 
   const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'No timestamp';
+    
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -540,14 +672,12 @@ const Messages = () => {
   };
 
   const formatBytes = (bytes) => {
-    if (bytes === 0) return '0 B';
+    if (!bytes || isNaN(bytes) || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
-
-  const totalPages = Math.ceil(totalMessages / messagesPerPage);
 
   if (loading) {
     return (
@@ -746,6 +876,85 @@ const Messages = () => {
           </Pagination>
         )}
       </MessagesContainer>
+
+      {showViewModal && viewingMessage && (
+        <Modal onClick={() => setShowViewModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <h2>Message Details</h2>
+              <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
+            </ModalHeader>
+
+            <MessageDetailGrid>
+              <DetailItem>
+                <div className="label">Channel</div>
+                <div className="value">{viewingMessage.channelName}</div>
+              </DetailItem>
+              <DetailItem>
+                <div className="label">Message ID</div>
+                <div className="value" style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{viewingMessage.id}</div>
+              </DetailItem>
+              <DetailItem>
+                <div className="label">Protocol</div>
+                <div className="value">
+                  <ProtocolBadge protocol={viewingMessage.protocol}>
+                    {viewingMessage.protocol}
+                  </ProtocolBadge>
+                </div>
+              </DetailItem>
+              <DetailItem>
+                <div className="label">Publisher</div>
+                <div className="value">{viewingMessage.publisher}</div>
+              </DetailItem>
+              <DetailItem>
+                <div className="label">Topic</div>
+                <div className="value" style={{ fontFamily: 'monospace' }}>{viewingMessage.topic}</div>
+              </DetailItem>
+              <DetailItem>
+                <div className="label">Timestamp</div>
+                <div className="value">{new Date(viewingMessage.timestamp).toLocaleString()}</div>
+              </DetailItem>
+              <DetailItem>
+                <div className="label">Message Size</div>
+                <div className="value">{formatBytes(viewingMessage.size)}</div>
+              </DetailItem>
+              {viewingMessage.qos !== null && (
+                <DetailItem>
+                  <div className="label">QoS Level</div>
+                  <div className="value">{viewingMessage.qos}</div>
+                </DetailItem>
+              )}
+              {viewingMessage.retained !== null && (
+                <DetailItem>
+                  <div className="label">Retained</div>
+                  <div className="value">{viewingMessage.retained ? 'Yes' : 'No'}</div>
+                </DetailItem>
+              )}
+            </MessageDetailGrid>
+
+            <PayloadContainer>
+              <div className="label">Message Payload</div>
+              <div className="payload">{viewingMessage.payload}</div>
+            </PayloadContainer>
+
+            <ModalActions>
+              <Button onClick={() => setShowViewModal(false)}>Close</Button>
+              <Button variant="primary" onClick={() => {
+                const dataStr = JSON.stringify(viewingMessage, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `message_${viewingMessage.id}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}>
+                Export Message
+              </Button>
+            </ModalActions>
+          </ModalContent>
+        </Modal>
+      )}
     </Container>
   );
 };
