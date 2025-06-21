@@ -17,7 +17,7 @@ import {
   FiAlertTriangle,
   FiSearch,
   FiFilter,
-  FiCertificate,
+  FiAward,
   FiCalendar
 } from 'react-icons/fi';
 import magistralaApi from '../services/magistralaApi';
@@ -761,7 +761,7 @@ CgKCAQEA...mock_certificate_content...
       <StatsGrid>
         <StatCard iconBg="linear-gradient(135deg, #10b981, #059669)">
           <div className="stat-icon">
-            <FiCertificate />
+            <FiAward />
           </div>
           <div className="stat-value">{stats.totalCertificates}</div>
           <div className="stat-label">Total Certificates</div>
@@ -911,7 +911,7 @@ CgKCAQEA...mock_certificate_content...
           ) : (
             <EmptyState>
               <div className="empty-icon">
-                <FiCertificate />
+                <FiAward />
               </div>
               <div className="empty-title">No Certificates Found</div>
               <div className="empty-text">
