@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import styled, { ThemeProvider } from 'styled-components';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import TestStatus from './components/TestStatus';
@@ -14,6 +16,9 @@ import Messages from './pages/Messages';
 import DataStorage from './pages/DataStorage';
 import UserManagement from './pages/UserManagement';
 import Security from './pages/Security';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Profile from './pages/Profile';
 import { brandPresets } from './styles/theme';
 
 // Use Choovio theme with fallback to original colors
@@ -49,27 +54,41 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <Router>
-        <AppContainer>
-          <Sidebar />
-          <MainContent>
-            <Header />
-            <ContentArea>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/devices" element={<DeviceManagement />} />
-                <Route path="/lorawan" element={<LoRaWANManagement />} />
-                <Route path="/channels" element={<Channels />} />
-                <Route path="/messages" element={<Messages />} />
-                <Route path="/data" element={<DataStorage />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/security" element={<Security />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
-            </ContentArea>
-          </MainContent>
-          {process.env.NODE_ENV === 'development' && <TestStatus />}
-        </AppContainer>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            
+            {/* Protected Routes */}
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <AppContainer>
+                  <Sidebar />
+                  <MainContent>
+                    <Header />
+                    <ContentArea>
+                      <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/devices" element={<DeviceManagement />} />
+                        <Route path="/lorawan" element={<LoRaWANManagement />} />
+                        <Route path="/channels" element={<Channels />} />
+                        <Route path="/messages" element={<Messages />} />
+                        <Route path="/data" element={<DataStorage />} />
+                        <Route path="/users" element={<UserManagement />} />
+                        <Route path="/security" element={<Security />} />
+                        <Route path="/analytics" element={<Analytics />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/profile" element={<Profile />} />
+                      </Routes>
+                    </ContentArea>
+                  </MainContent>
+                  {process.env.NODE_ENV === 'development' && <TestStatus />}
+                </AppContainer>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </AuthProvider>
       </Router>
     </ThemeProvider>
   );

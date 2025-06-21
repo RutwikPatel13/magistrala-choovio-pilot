@@ -10,6 +10,48 @@ class MagistralaAPI {
   // Authentication Management
   async login(email, password) {
     try {
+      // Demo credentials check
+      if (email === 'admin@choovio.com' && password === 'admin123') {
+        const mockToken = 'demo_token_' + Date.now();
+        const userData = {
+          id: 'user-001',
+          name: 'Admin User',
+          email: 'admin@choovio.com',
+          role: 'Administrator'
+        };
+        
+        this.token = mockToken;
+        localStorage.setItem('magistrala_token', mockToken);
+        localStorage.setItem('magistrala_user', JSON.stringify(userData));
+        
+        return {
+          token: mockToken,
+          user: userData,
+          success: true
+        };
+      }
+      
+      if (email === 'user@choovio.com' && password === 'user123') {
+        const mockToken = 'demo_token_' + Date.now();
+        const userData = {
+          id: 'user-002',
+          name: 'Demo User',
+          email: 'user@choovio.com',
+          role: 'User'
+        };
+        
+        this.token = mockToken;
+        localStorage.setItem('magistrala_token', mockToken);
+        localStorage.setItem('magistrala_user', JSON.stringify(userData));
+        
+        return {
+          token: mockToken,
+          user: userData,
+          success: true
+        };
+      }
+
+      // Try real Magistrala API
       const response = await fetch(`${this.baseURL}/users/tokens/issue`, {
         method: 'POST',
         headers: {
@@ -25,29 +67,108 @@ class MagistralaAPI {
         const data = await response.json();
         this.token = data.access_token;
         localStorage.setItem('magistrala_token', this.token);
-        return data;
+        
+        // Get user info
+        const userData = await this.getUserInfo();
+        return {
+          token: data.access_token,
+          user: userData,
+          success: true
+        };
       }
-      throw new Error('Login failed');
+      
+      throw new Error('Invalid credentials');
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+      throw new Error('Invalid email or password');
     }
   }
 
   async createUser(user) {
     try {
+      // Simulate user creation for demo
+      const mockUser = {
+        id: 'user-' + Date.now(),
+        name: user.name,
+        email: user.email,
+        role: user.role || 'User',
+        created_at: new Date().toISOString(),
+        success: true
+      };
+      
+      // Store in localStorage for demo
+      const existingUsers = JSON.parse(localStorage.getItem('demo_users') || '[]');
+      existingUsers.push(mockUser);
+      localStorage.setItem('demo_users', JSON.stringify(existingUsers));
+      
+      return mockUser;
+
+      // Real API call (commented out for demo)
+      /*
       const response = await fetch(`${this.baseURL}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(user),
+        body: JSON.stringify({
+          name: user.name,
+          credentials: {
+            identity: user.email,
+            secret: user.password
+          },
+          metadata: {
+            role: user.role
+          }
+        }),
       });
       return await response.json();
+      */
     } catch (error) {
       console.error('Create user error:', error);
       throw error;
     }
+  }
+
+  async getUserInfo() {
+    try {
+      const savedUser = localStorage.getItem('magistrala_user');
+      if (savedUser) {
+        return JSON.parse(savedUser);
+      }
+      
+      // Try to get user info from API
+      const response = await fetch(`${this.baseURL}/users/profile`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      // Return default user info
+      return {
+        id: 'user-default',
+        name: 'User',
+        email: 'user@choovio.com',
+        role: 'User'
+      };
+    } catch (error) {
+      console.error('Get user info error:', error);
+      return {
+        id: 'user-default',
+        name: 'User',
+        email: 'user@choovio.com',
+        role: 'User'
+      };
+    }
+  }
+
+  logout() {
+    this.token = null;
+    localStorage.removeItem('magistrala_token');
+    localStorage.removeItem('magistrala_user');
   }
 
   // Device Management (Clients in Magistrala)
