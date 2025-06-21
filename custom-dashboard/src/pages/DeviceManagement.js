@@ -267,6 +267,9 @@ const DeviceManagement = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [activeMenu, setActiveMenu] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingDevice, setEditingDevice] = useState(null);
+  const [addLoading, setAddLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     type: 'sensor',
@@ -303,23 +306,34 @@ const DeviceManagement = () => {
   });
 
   const handleAddDevice = async () => {
+    if (!formData.name.trim()) {
+      alert('Please enter a device name');
+      return;
+    }
+
     try {
+      setAddLoading(true);
+      console.log('Adding device:', formData);
+      
       if (formData.type === 'lorawan') {
-        await magistralaApi.createLoRaWANDevice({
+        const result = await magistralaApi.createLoRaWANDevice({
           name: formData.name,
           devEUI: formData.devEUI,
           appEUI: formData.appEUI,
           appKey: formData.appKey,
           location: formData.location
         });
+        console.log('LoRaWAN device created:', result);
       } else {
-        await magistralaApi.createDevice({
+        const result = await magistralaApi.createDevice({
           name: formData.name,
           type: formData.type,
           protocol: formData.protocol,
           location: formData.location
         });
+        console.log('Device created:', result);
       }
+      
       setShowAddModal(false);
       setFormData({
         name: '',
@@ -330,9 +344,112 @@ const DeviceManagement = () => {
         appEUI: '',
         appKey: ''
       });
-      loadDevices();
+      await loadDevices();
+      console.log('Device added successfully');
     } catch (error) {
       console.error('Failed to add device:', error);
+      alert('Failed to add device. Please try again.');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleEditDevice = (device) => {
+    setEditingDevice(device);
+    setFormData({
+      name: device.name,
+      type: device.metadata?.type || 'sensor',
+      protocol: device.metadata?.protocol || 'mqtt',
+      location: device.metadata?.location || '',
+      devEUI: device.metadata?.devEUI || '',
+      appEUI: device.metadata?.appEUI || '',
+      appKey: device.metadata?.appKey || ''
+    });
+    setShowEditModal(true);
+    setActiveMenu(null);
+  };
+
+  const handleUpdateDevice = async () => {
+    if (!formData.name.trim()) {
+      alert('Please enter a device name');
+      return;
+    }
+
+    try {
+      setAddLoading(true);
+      console.log('Updating device:', editingDevice.id, formData);
+      
+      const result = await magistralaApi.updateDevice(editingDevice.id, {
+        name: formData.name,
+        metadata: {
+          type: formData.type,
+          protocol: formData.protocol,
+          location: formData.location,
+          devEUI: formData.devEUI,
+          appEUI: formData.appEUI,
+          appKey: formData.appKey,
+          ...editingDevice.metadata
+        }
+      });
+      console.log('Device updated:', result);
+      
+      setShowEditModal(false);
+      setEditingDevice(null);
+      setFormData({
+        name: '',
+        type: 'sensor',
+        protocol: 'mqtt',
+        location: '',
+        devEUI: '',
+        appEUI: '',
+        appKey: ''
+      });
+      await loadDevices();
+      console.log('Device updated successfully');
+    } catch (error) {
+      console.error('Failed to update device:', error);
+      alert('Failed to update device. Please try again.');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleToggleDevice = async (device) => {
+    try {
+      console.log('Toggling device status:', device.id, device.status);
+      const newStatus = device.status === 'online' ? 'offline' : 'online';
+      
+      await magistralaApi.updateDevice(device.id, {
+        status: newStatus,
+        metadata: {
+          ...device.metadata,
+          lastStatusChange: new Date().toISOString()
+        }
+      });
+      
+      console.log(`Device ${device.id} status changed to ${newStatus}`);
+      await loadDevices();
+      setActiveMenu(null);
+    } catch (error) {
+      console.error('Failed to toggle device status:', error);
+      alert('Failed to change device status. Please try again.');
+    }
+  };
+
+  const handleDeleteDevice = async (device) => {
+    if (!window.confirm(`Are you sure you want to delete "${device.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      console.log('Deleting device:', device.id);
+      await magistralaApi.deleteDevice(device.id);
+      console.log('Device deleted successfully');
+      await loadDevices();
+      setActiveMenu(null);
+    } catch (error) {
+      console.error('Failed to delete device:', error);
+      alert('Failed to delete device. Please try again.');
     }
   };
 
@@ -436,15 +553,15 @@ const DeviceManagement = () => {
                   </ActionButton>
                   {activeMenu === device.id && (
                     <ActionMenu>
-                      <div className="menu-item">
+                      <div className="menu-item" onClick={() => handleEditDevice(device)}>
                         <FiEdit size={14} />
                         Edit Device
                       </div>
-                      <div className="menu-item">
+                      <div className="menu-item" onClick={() => handleToggleDevice(device)}>
                         {device.status === 'online' ? <FiWifiOff size={14} /> : <FiWifi size={14} />}
                         {device.status === 'online' ? 'Disconnect' : 'Connect'}
                       </div>
-                      <div className="menu-item danger">
+                      <div className="menu-item danger" onClick={() => handleDeleteDevice(device)}>
                         <FiTrash2 size={14} />
                         Delete Device
                       </div>
@@ -670,16 +787,208 @@ const DeviceManagement = () => {
               </button>
               <button
                 onClick={handleAddDevice}
+                disabled={addLoading}
                 style={{
                   padding: '0.75rem 1.5rem',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #2C5282, #3182CE)',
+                  background: addLoading ? '#ccc' : 'linear-gradient(135deg, #2C5282, #3182CE)',
                   color: 'white',
+                  borderRadius: '6px',
+                  cursor: addLoading ? 'not-allowed' : 'pointer',
+                  opacity: addLoading ? 0.7 : 1
+                }}
+              >
+                {addLoading ? 'Adding...' : 'Add Device'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '80vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ marginBottom: '1.5rem' }}>Edit Device</h3>
+            
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Device Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+                placeholder="Enter device name"
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Device Type</label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              >
+                <option value="sensor">Sensor</option>
+                <option value="actuator">Actuator</option>
+                <option value="lorawan">LoRaWAN Device</option>
+                <option value="gateway">Gateway</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Protocol</label>
+              <select
+                value={formData.protocol}
+                onChange={(e) => setFormData({ ...formData, protocol: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              >
+                <option value="mqtt">MQTT</option>
+                <option value="coap">CoAP</option>
+                <option value="http">HTTP</option>
+                <option value="lorawan">LoRaWAN</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Location</label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+                placeholder="e.g., Building A - Floor 1"
+              />
+            </div>
+
+            {formData.type === 'lorawan' && (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Device EUI</label>
+                  <input
+                    type="text"
+                    value={formData.devEUI}
+                    onChange={(e) => setFormData({ ...formData, devEUI: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      fontSize: '1rem'
+                    }}
+                    placeholder="0011223344556677"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Application EUI</label>
+                  <input
+                    type="text"
+                    value={formData.appEUI}
+                    onChange={(e) => setFormData({ ...formData, appEUI: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      fontSize: '1rem'
+                    }}
+                    placeholder="7066554433221100"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Application Key</label>
+                  <input
+                    type="text"
+                    value={formData.appKey}
+                    onChange={(e) => setFormData({ ...formData, appKey: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      fontSize: '1rem'
+                    }}
+                    placeholder="00112233445566778899AABBCCDDEEFF"
+                  />
+                </div>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingDevice(null);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: '1px solid #e2e8f0',
+                  background: '#f7fafc',
+                  color: '#4a5568',
                   borderRadius: '6px',
                   cursor: 'pointer'
                 }}
               >
-                Add Device
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateDevice}
+                disabled={addLoading}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  background: addLoading ? '#ccc' : 'linear-gradient(135deg, #2C5282, #3182CE)',
+                  color: 'white',
+                  borderRadius: '6px',
+                  cursor: addLoading ? 'not-allowed' : 'pointer',
+                  opacity: addLoading ? 0.7 : 1
+                }}
+              >
+                {addLoading ? 'Updating...' : 'Update Device'}
               </button>
             </div>
           </div>
