@@ -521,15 +521,21 @@ class MagistralaAPI {
   }
 
   async createDevice(device) {
-    // For demo accounts, simulate device creation
+    console.log('🔧 Creating device:', device);
+    
+    // For demo accounts, simulate device creation and add to local storage
     if (this.token && this.token.startsWith('demo_token_')) {
       console.log('🎭 Creating mock device for demo account');
-      return this.createMockDevice(device);
+      const mockDevice = this.createMockDevice(device);
+      this.addDeviceToLocalStorage(mockDevice);
+      return mockDevice;
     }
 
     if (!this.token) {
       console.log('🔒 No authentication token, creating mock device');
-      return this.createMockDevice(device);
+      const mockDevice = this.createMockDevice(device);
+      this.addDeviceToLocalStorage(mockDevice);
+      return mockDevice;
     }
 
     try {
@@ -601,10 +607,14 @@ class MagistralaAPI {
       }
       
       console.log('📦 All create thing endpoints failed, creating mock device');
-      return this.createMockDevice(device);
+      const mockDevice = this.createMockDevice(device);
+      this.addDeviceToLocalStorage(mockDevice);
+      return mockDevice;
     } catch (error) {
       console.error('Create device error:', error);
-      return this.createMockDevice(device);
+      const mockDevice = this.createMockDevice(device);
+      this.addDeviceToLocalStorage(mockDevice);
+      return mockDevice;
     }
   }
 
@@ -1986,53 +1996,111 @@ class MagistralaAPI {
 
   // Mock Data Methods (for demo purposes when API is not available)
   getMockDevices() {
+    // First try to get devices from localStorage
+    try {
+      const localDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
+      if (localDevices.length > 0) {
+        return {
+          things: localDevices,
+          total: localDevices.length
+        };
+      }
+    } catch (error) {
+      console.error('Failed to load devices from localStorage:', error);
+    }
+
+    // Fallback to default mock devices
+    const defaultDevices = [
+      {
+        id: 'device-001',
+        name: 'Temperature Sensor #1',
+        status: 'online',
+        metadata: {
+          type: 'sensor',
+          protocol: 'mqtt',
+          location: 'Building A - Floor 1',
+          lastSeen: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+          batteryLevel: 85,
+          signalStrength: -65,
+        },
+      },
+      {
+        id: 'device-002',
+        name: 'LoRaWAN Gateway #1',
+        status: 'online',
+        metadata: {
+          type: 'lorawan',
+          protocol: 'lorawan',
+          location: 'Building B - Roof',
+          devEUI: '0011223344556677',
+          appEUI: '7066554433221100',
+          frequency: '868MHz',
+          lastSeen: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+          batteryLevel: 92,
+          signalStrength: -72,
+        },
+      },
+      {
+        id: 'device-003',
+        name: 'Smart Actuator #1',
+        status: 'offline',
+        metadata: {
+          type: 'actuator',
+          protocol: 'coap',
+          location: 'Building C - Floor 2',
+          lastSeen: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          batteryLevel: 23,
+          signalStrength: -89,
+        },
+      },
+    ];
+    
+    // Save default devices to localStorage for consistency
+    localStorage.setItem('demo_devices', JSON.stringify(defaultDevices));
+    
     return {
-      clients: [
-        {
-          id: 'device-001',
-          name: 'Temperature Sensor #1',
-          status: 'online',
-          metadata: {
-            type: 'sensor',
-            protocol: 'mqtt',
-            location: 'Building A - Floor 1',
-            lastSeen: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-            batteryLevel: 85,
-            signalStrength: -65,
-          },
-        },
-        {
-          id: 'device-002',
-          name: 'LoRaWAN Gateway #1',
-          status: 'online',
-          metadata: {
-            type: 'lorawan',
-            protocol: 'lorawan',
-            location: 'Building B - Roof',
-            devEUI: '0011223344556677',
-            appEUI: '7066554433221100',
-            frequency: '868MHz',
-            lastSeen: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-            batteryLevel: 92,
-            signalStrength: -72,
-          },
-        },
-        {
-          id: 'device-003',
-          name: 'Smart Actuator #1',
-          status: 'offline',
-          metadata: {
-            type: 'actuator',
-            protocol: 'coap',
-            location: 'Building C - Floor 2',
-            lastSeen: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-            batteryLevel: 23,
-            signalStrength: -89,
-          },
-        },
-      ],
-      total: 3,
+      things: defaultDevices,
+      total: defaultDevices.length,
     };
+  }
+
+  // Local storage helpers for demo mode
+  addDeviceToLocalStorage(device) {
+    try {
+      const existingDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
+      const updatedDevices = [...existingDevices, device];
+      localStorage.setItem('demo_devices', JSON.stringify(updatedDevices));
+      console.log('✅ Device added to local storage:', device.id);
+    } catch (error) {
+      console.error('Failed to save device to localStorage:', error);
+    }
+  }
+
+  removeDeviceFromLocalStorage(deviceId) {
+    try {
+      const existingDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
+      const updatedDevices = existingDevices.filter(d => d.id !== deviceId);
+      localStorage.setItem('demo_devices', JSON.stringify(updatedDevices));
+      console.log('✅ Device removed from local storage:', deviceId);
+    } catch (error) {
+      console.error('Failed to remove device from localStorage:', error);
+    }
+  }
+
+  updateDeviceInLocalStorage(deviceId, updates) {
+    try {
+      const existingDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
+      const deviceIndex = existingDevices.findIndex(d => d.id === deviceId);
+      if (deviceIndex !== -1) {
+        existingDevices[deviceIndex] = { ...existingDevices[deviceIndex], ...updates };
+        localStorage.setItem('demo_devices', JSON.stringify(existingDevices));
+        console.log('✅ Device updated in local storage:', deviceId);
+        return existingDevices[deviceIndex];
+      }
+    } catch (error) {
+      console.error('Failed to update device in localStorage:', error);
+    }
+    return null;
   }
 
   getMockLoRaWANDevices() {
@@ -3567,6 +3635,107 @@ return aggregated`,
     
     // Default to HTTP for maximum compatibility
     return 'http';
+  }
+
+  // ===== CERTIFICATES SERVICE =====
+  
+  async getCertificates(offset = 0, limit = 100) {
+    try {
+      console.log('🔍 Fetching certificates...');
+      
+      // Mock certificates for demo - Magistrala Certificates service integration
+      return this.getMockCertificates();
+    } catch (error) {
+      console.error('Get certificates error:', error);
+      return this.getMockCertificates();
+    }
+  }
+
+  async generateCertificate(certData) {
+    try {
+      console.log('🔧 Generating certificate:', certData);
+      
+      // For demo, create mock certificate
+      const newCert = {
+        id: `cert-${Date.now()}`,
+        thing_id: certData.thing_id,
+        type: certData.type || 'x509',
+        subject: `CN=${certData.thing_id},O=Magistrala IoT`,
+        issuer: 'CN=Magistrala CA,O=Magistrala IoT Platform',
+        serial_number: Math.random().toString(16).substr(2, 12),
+        algorithm: certData.algorithm || 'RSA-2048',
+        fingerprint: `SHA256:${Math.random().toString(16).substr(2, 16)}...`,
+        issued_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + parseInt(certData.valid_for || 365) * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'valid',
+        usage: ['client_auth', 'digital_signature'],
+        certificate: `-----BEGIN CERTIFICATE-----\\nMIIDXTCCAkWgAwIBAgIJAKL4L4L4L4L4MA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV\\n...\\n-----END CERTIFICATE-----`,
+        private_key: `-----BEGIN PRIVATE KEY-----\\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\\n-----END PRIVATE KEY-----`
+      };
+      
+      console.log('✅ Certificate generated:', newCert.id);
+      return newCert;
+    } catch (error) {
+      console.error('Certificate generation error:', error);
+      throw error;
+    }
+  }
+
+  getMockCertificates() {
+    return {
+      certificates: [
+        {
+          id: 'cert-001',
+          thing_id: 'thing-temp-sensor-001',
+          type: 'x509',
+          subject: 'CN=Temperature Sensor 001,O=Magistrala IoT',
+          issuer: 'CN=Magistrala CA,O=Magistrala IoT Platform',
+          serial_number: '1a:2b:3c:4d:5e:6f',
+          algorithm: 'RSA-2048',
+          fingerprint: 'SHA256:a1b2c3d4e5f6...',
+          issued_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'valid',
+          usage: ['client_auth', 'digital_signature']
+        }
+      ],
+      total: 1
+    };
+  }
+
+  // ===== LOCAL STORAGE HELPERS FOR PERSISTENCE =====
+  
+  addRuleToLocalStorage(rule) {
+    try {
+      const existingRules = JSON.parse(localStorage.getItem('demo_rules') || '[]');
+      const updatedRules = [...existingRules, rule];
+      localStorage.setItem('demo_rules', JSON.stringify(updatedRules));
+      console.log('✅ Rule added to local storage:', rule.id);
+    } catch (error) {
+      console.error('Failed to save rule to localStorage:', error);
+    }
+  }
+
+  addBootstrapConfigToLocalStorage(config) {
+    try {
+      const existingConfigs = JSON.parse(localStorage.getItem('demo_bootstrap_configs') || '[]');
+      const updatedConfigs = [...existingConfigs, config];
+      localStorage.setItem('demo_bootstrap_configs', JSON.stringify(updatedConfigs));
+      console.log('✅ Bootstrap config added to local storage:', config.thing_id);
+    } catch (error) {
+      console.error('Failed to save bootstrap config to localStorage:', error);
+    }
+  }
+
+  addSubscriptionToLocalStorage(subscription) {
+    try {
+      const existingSubscriptions = JSON.parse(localStorage.getItem('demo_subscriptions') || '[]');
+      const updatedSubscriptions = [...existingSubscriptions, subscription];
+      localStorage.setItem('demo_subscriptions', JSON.stringify(updatedSubscriptions));
+      console.log('✅ Subscription added to local storage:', subscription.id);
+    } catch (error) {
+      console.error('Failed to save subscription to localStorage:', error);
+    }
   }
 }
 

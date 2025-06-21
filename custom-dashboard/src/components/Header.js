@@ -325,10 +325,10 @@ const Header = () => {
     const routes = {
       device: '/devices',
       channel: '/channels',
-      data: '/data',
+      data: '/messages',
       user: '/users'
     };
-    window.location.hash = routes[item.type] || '/';
+    navigate(routes[item.type] || '/');
   };
 
   const handleNotificationClick = () => {
