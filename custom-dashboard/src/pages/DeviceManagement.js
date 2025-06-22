@@ -412,7 +412,15 @@ const DeviceManagement = () => {
       console.log('Device updated successfully');
     } catch (error) {
       console.error('Failed to update device:', error);
-      alert('Failed to update device. Please try again.');
+      
+      // Provide specific error messaging
+      if (error.message.includes('Not found')) {
+        alert('Device update is not supported in the current Magistrala deployment. This feature requires a full Magistrala instance with update capabilities.');
+      } else if (error.message.includes('Authentication')) {
+        alert('Authentication failed. Please login again.');
+      } else {
+        alert(`Failed to update device: ${error.message}`);
+      }
     } finally {
       setAddLoading(false);
     }
@@ -453,7 +461,15 @@ const DeviceManagement = () => {
       setActiveMenu(null);
     } catch (error) {
       console.error('Failed to delete device:', error);
-      alert('Failed to delete device. Please try again.');
+      
+      // Provide specific error messaging
+      if (error.message.includes('Not found')) {
+        alert('Device deletion is not supported in the current Magistrala deployment. This feature requires a full Magistrala instance with delete capabilities.');
+      } else if (error.message.includes('Authentication')) {
+        alert('Authentication failed. Please login again.');
+      } else {
+        alert(`Failed to delete device: ${error.message}`);
+      }
     }
   };
 

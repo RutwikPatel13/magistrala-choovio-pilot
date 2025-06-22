@@ -642,8 +642,8 @@ class MagistralaAPI {
       console.log(`🔧 Updating thing ${deviceId} in Magistrala...`);
       
       const endpoints = [
-        { url: `${this.thingsURL}/${deviceId}`, type: 'proxy' },
-        { url: `${this.directThingsURL}/things/${deviceId}`, type: 'direct' }
+        { url: `${this.directThingsURL}/things/${deviceId}`, type: 'direct' },
+        { url: `${this.thingsURL}/${deviceId}`, type: 'proxy' }
       ];
       
       // Prepare update data according to Magistrala API format
@@ -655,7 +655,7 @@ class MagistralaAPI {
       for (const endpoint of endpoints) {
         try {
           const response = await fetch(endpoint.url, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${this.token}`,
               'Content-Type': 'application/json',
