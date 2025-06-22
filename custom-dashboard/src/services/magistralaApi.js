@@ -229,8 +229,8 @@ class MagistralaAPI {
     console.log('🌐 Attempting Magistrala JWT authentication...');
     
     const endpoints = [
-      { url: `${this.usersURL}/tokens/issue`, type: 'proxy' },
-      { url: `${this.directUsersURL}/tokens/issue`, type: 'direct' }
+      { url: `${this.directUsersURL}/users/tokens/issue`, type: 'direct' },
+      { url: `${this.usersURL}/tokens/issue`, type: 'proxy' }
     ];
     
     const requestBody = {
@@ -274,8 +274,17 @@ class MagistralaAPI {
           // Store working endpoint for future use
           this.workingEndpoints.users = endpoint.type;
           
-          // Get user profile information
-          const userData = await this.getUserInfo();
+          // Use user info from login response (Magistrala includes it)
+          const userData = data.user || {
+            id: data.user_id || 'unknown',
+            name: 'User',
+            email: email,
+            role: 'User'
+          };
+          
+          // Store user data for profile access
+          this.currentUser = userData;
+          localStorage.setItem('magistrala_user', JSON.stringify(userData));
           
           console.log(`✅ Magistrala authentication successful via ${endpoint.type}`);
           return {
@@ -304,14 +313,11 @@ class MagistralaAPI {
   }
 
   async createUser(user) {
-    if (!this.token) {
-      throw new Error('Authentication required. Please login first.');
-    }
-
+    // User creation does NOT require authentication in Magistrala
     try {
       const endpoints = [
-        { url: `${this.usersURL}`, type: 'proxy' },
-        { url: `${this.directUsersURL}/users`, type: 'direct' }
+        { url: `${this.directUsersURL}/users`, type: 'direct' },
+        { url: `${this.usersURL}`, type: 'proxy' }
       ];
       
       const userData = {
@@ -329,7 +335,6 @@ class MagistralaAPI {
           const response = await fetch(endpoint.url, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${this.token}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(userData),
@@ -361,60 +366,27 @@ class MagistralaAPI {
 
   async getUserInfo() {
     try {
-      // Try to get user profile from Magistrala API
-      
-      // Try to get user profile from Magistrala API
-      if (!this.token) {
-        throw new Error('No authentication token available');
+      // Return stored user data (from login response)
+      if (this.currentUser) {
+        console.log('✅ Returning stored user profile');
+        return this.currentUser;
       }
       
-      const endpoints = [
-        { url: `${this.usersURL}/profile`, type: 'proxy' },
-        { url: `${this.directUsersURL}/users/profile`, type: 'direct' }
-      ];
-      
-      for (const endpoint of endpoints) {
+      // Try to get from localStorage
+      const storedUser = localStorage.getItem('magistrala_user');
+      if (storedUser) {
         try {
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            
-            // Store user data for future use
-            
-            console.log(`✅ User profile retrieved via ${endpoint.type}`);
-            return userData;
-          } else if (response.status === 401) {
-            // Token expired, try to refresh
-            await this.refreshAccessToken();
-            if (this.token) {
-              // Retry with new token
-              const retryResponse = await fetch(endpoint.url, {
-                headers: {
-                  'Authorization': `Bearer ${this.token}`,
-                  'Content-Type': 'application/json'
-                },
-              });
-              
-              if (retryResponse.ok) {
-                const userData = await retryResponse.json();
-                // User data retrieved
-                return userData;
-              }
-            }
-          }
-        } catch (error) {
-          console.log(`User profile ${endpoint.type} error:`, error.message);
+          const userData = JSON.parse(storedUser);
+          this.currentUser = userData;
+          console.log('✅ User profile retrieved from storage');
+          return userData;
+        } catch (e) {
+          console.log('❌ Failed to parse stored user data');
         }
       }
       
-      // Return default user info if API calls fail
-      console.log('📱 Using default user profile (API unavailable)');
+      // Return default user info if no stored data
+      console.log('📱 Using default user profile (no stored data)');
       return {
         id: 'user-default',
         name: 'User',
@@ -445,38 +417,7 @@ class MagistralaAPI {
       throw new Error('Authentication required. Please login first.');
     }
     
-    // Demo mode fallback
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Demo mode: returning sample devices');
-      return {
-        clients: [
-          {
-            id: 'demo-device-001',
-            name: 'Demo Temperature Sensor',
-            status: 'online',
-            metadata: {
-              type: 'sensor',
-              protocol: 'mqtt',
-              location: 'Demo Location',
-              lastSeen: new Date().toISOString()
-            }
-          },
-          {
-            id: 'demo-device-002', 
-            name: 'Demo LoRaWAN Gateway',
-            status: 'online',
-            metadata: {
-              type: 'lorawan',
-              protocol: 'lorawan',
-              location: 'Demo Building',
-              devEUI: '0011223344556677',
-              lastSeen: new Date().toISOString()
-            }
-          }
-        ],
-        total: 2
-      };
-    }
+    // Skip demo mode - always try real API first
 
     try {
       console.log('🔍 Fetching things from Magistrala API...');
@@ -586,17 +527,7 @@ class MagistralaAPI {
       throw new Error('Authentication required. Please login first.');
     }
     
-    // Demo mode fallback
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Demo mode: simulating device creation');
-      return {
-        id: 'demo-device-' + Date.now(),
-        name: device.name,
-        status: 'online',
-        metadata: device.metadata || {},
-        created_at: new Date().toISOString()
-      };
-    }
+    // Always use real API
 
     try {
       console.log('🔧 Creating thing in Magistrala...');
@@ -787,27 +718,7 @@ class MagistralaAPI {
       throw new Error('Authentication required. Please login first.');
     }
     
-    // Demo mode fallback
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Demo mode: returning sample channels');
-      return {
-        channels: [
-          {
-            id: 'demo-channel-001',
-            name: 'Demo MQTT Channel',
-            description: 'Sample MQTT communication channel',
-            status: 'active',
-            protocol: 'mqtt',
-            topic: '/demo/mqtt',
-            metadata: { type: 'mqtt' },
-            created_at: new Date().toISOString(),
-            connectedDevices: 2,
-            messagesTotal: 150
-          }
-        ],
-        total: 1
-      };
-    }
+    // Always use real API
 
     try {
       console.log('🔍 Fetching channels from Magistrala API...');
@@ -910,20 +821,7 @@ class MagistralaAPI {
       throw new Error('Authentication required. Please login first.');
     }
     
-    // Demo mode fallback
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Demo mode: simulating channel creation');
-      return {
-        id: 'demo-channel-' + Date.now(),
-        name: channel.name,
-        description: channel.description,
-        protocol: channel.protocol || 'mqtt',
-        status: 'active',
-        created_at: new Date().toISOString(),
-        connectedDevices: 0,
-        messagesTotal: 0
-      };
-    }
+    // Always use real API
 
     try {
       console.log('🔧 Creating channel in Magistrala...');
@@ -1094,25 +992,7 @@ class MagistralaAPI {
       throw new Error('Authentication required. Please login first.');
     }
     
-    // Demo mode fallback
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Demo mode: returning sample messages');
-      return {
-        messages: [
-          {
-            id: 'demo-msg-001',
-            channelId: channelId,
-            channelName: 'Demo Channel',
-            protocol: 'mqtt',
-            payload: JSON.stringify({ temperature: 22.5, humidity: 60 }, null, 2),
-            timestamp: new Date().toISOString(),
-            publisher: 'demo-device-001',
-            topic: '/demo/data'
-          }
-        ],
-        total: 1
-      };
-    }
+    // Always use real API
 
     try {
       console.log(`🔍 Fetching messages from channel ${channelId}...`);
