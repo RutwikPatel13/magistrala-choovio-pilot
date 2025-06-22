@@ -20,21 +20,6 @@ class MagistralaAPI {
     this.enableRealtime = process.env.REACT_APP_ENABLE_REALTIME === 'true';
     this.enableMTLS = process.env.REACT_APP_ENABLE_MTLS === 'true';
     this.defaultDomainId = process.env.REACT_APP_DEFAULT_DOMAIN_ID;
-<<<<<<< HEAD
-    
-    // Service endpoints based on Magistrala documentation
-    this.usersPort = process.env.REACT_APP_MAGISTRALA_USERS_PORT || '9002';
-    this.thingsPort = process.env.REACT_APP_MAGISTRALA_THINGS_PORT || '9000';
-    this.channelsPort = process.env.REACT_APP_MAGISTRALA_CHANNELS_PORT || '9005';
-    this.httpPort = process.env.REACT_APP_MAGISTRALA_HTTP_PORT || '8008';
-    this.readerPort = process.env.REACT_APP_MAGISTRALA_READER_PORT || '9009';
-    this.bootstrapPort = process.env.REACT_APP_MAGISTRALA_BOOTSTRAP_PORT || '9013';
-    this.consumersPort = process.env.REACT_APP_MAGISTRALA_CONSUMERS_PORT || '9016';
-    this.provisionPort = process.env.REACT_APP_MAGISTRALA_PROVISION_PORT || '9020';
-    this.rulesPort = process.env.REACT_APP_MAGISTRALA_RULES_PORT || '9019';
-    this.reportsPort = process.env.REACT_APP_MAGISTRALA_REPORTS_PORT || '9021';
-=======
->>>>>>> dev
     
     // Working API endpoints discovered from backend analysis
     this.apiVersion = 'v1';
@@ -210,104 +195,6 @@ class MagistralaAPI {
     localStorage.removeItem('magistrala_token_expiry');
   }
 
-<<<<<<< HEAD
-  // Health check and connection validation
-  async validateConnection() {
-    console.log('🔍 Testing Magistrala connection...');
-    
-    const healthEndpoints = [
-      { url: `${this.baseURL}/health`, type: 'proxy' },
-      { url: `${this.baseURL}:9002/health`, type: 'users_direct' },
-      { url: `${this.baseURL}:9000/health`, type: 'things_direct' }
-    ];
-    
-    const results = {
-      accessible: false,
-      workingEndpoints: [],
-      errors: [],
-      recommendations: []
-    };
-    
-    for (const endpoint of healthEndpoints) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        
-        const response = await fetch(endpoint.url, {
-          signal: controller.signal,
-          method: 'GET'
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok || response.status === 404) { // 404 is OK if health endpoint doesn't exist
-          results.accessible = true;
-          results.workingEndpoints.push(endpoint);
-          console.log(`✅ ${endpoint.type} accessible: ${endpoint.url}`);
-        } else {
-          results.errors.push(`${endpoint.type}: HTTP ${response.status}`);
-          console.log(`⚠️ ${endpoint.type} returned: ${response.status}`);
-        }
-      } catch (error) {
-        results.errors.push(`${endpoint.type}: ${error.message}`);
-        console.log(`❌ ${endpoint.type} failed: ${error.message}`);
-      }
-    }
-    
-    // Generate recommendations based on results
-    if (!results.accessible) {
-      results.recommendations.push('1. Check if Magistrala services are running');
-      results.recommendations.push('2. Verify the base URL configuration');
-      results.recommendations.push('3. Check network connectivity');
-      results.recommendations.push('4. Ensure CORS is configured properly');
-    } else if (results.workingEndpoints.length < healthEndpoints.length) {
-      results.recommendations.push('Some endpoints are not accessible - check individual service status');
-    }
-    
-    return results;
-  }
-
-  // Enhanced debug logging
-  debugLog(message, data = null) {
-    if (this.debugMode) {
-      console.log(`🔍 [DEBUG] ${message}`, data || '');
-    }
-  }
-
-  // Magistrala JWT Authentication with demo fallback
-  async login(email, password, domainId = null) {
-    console.log('🔑 Starting Magistrala authentication...');
-    
-    // Demo fallback for when no Magistrala instance is running
-    if (email === 'demo@magistrala.com' && password === 'demo123') {
-      console.log('🎭 Demo login - no Magistrala instance required');
-      const demoToken = 'demo_token_' + Date.now();
-      this.token = demoToken;
-      localStorage.setItem('magistrala_token', demoToken);
-      return {
-        token: demoToken,
-        user: {
-          id: 'demo-user',
-          name: 'Demo User',
-          email: 'demo@magistrala.com',
-          role: 'Administrator'
-        },
-        success: true,
-        endpoint: 'demo_fallback'
-      };
-    }
-    
-    console.log('🌐 Attempting Magistrala JWT authentication...');
-    
-    const endpoints = [
-      { url: `${this.directUsersURL}/users/tokens/issue`, type: 'direct' },
-      { url: `${this.usersURL}/tokens/issue`, type: 'proxy' }
-    ];
-    
-    const requestBody = {
-      identity: email,
-      secret: password
-=======
   // Enhanced API request method with working endpoint discovery
   async apiRequest(service, endpoint, method = 'GET', body = null, requiresAuth = false) {
     const endpointMap = {
@@ -316,7 +203,6 @@ class MagistralaAPI {
       'channels': [this.channelsURL, this.legacyChannelsURL],
       'http': [this.httpURL, this.legacyHttpURL],
       'readers': [this.readersURL, this.legacyReadersURL]
->>>>>>> dev
     };
     
     const urls = endpointMap[service] || [this.baseURL];
@@ -445,76 +331,10 @@ class MagistralaAPI {
         
         clearTimeout(timeoutId);
         
-<<<<<<< HEAD
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Store tokens properly
-          this.setTokens(
-            data.access_token, 
-            data.refresh_token, 
-            data.expires_in || 3600
-          );
-          
-          // Store working endpoint for future use
-          this.workingEndpoints.users = endpoint.type;
-          
-          // Get real user data by fetching user info with token
-          let userData = data.user || {
-            id: data.user_id || 'unknown',
-            name: 'User',
-            email: email,
-            role: 'User'
-          };
-          
-          // Try to get real user data from users API
-          try {
-            const usersResponse = await fetch(`${this.directUsersURL}/users`, {
-              headers: {
-                'Authorization': `Bearer ${data.access_token}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (usersResponse.ok) {
-              const usersData = await usersResponse.json();
-              const realUser = usersData.users?.find(user => 
-                user.credentials?.identity === email || user.email === email
-              );
-              
-              if (realUser) {
-                userData = {
-                  id: realUser.id,
-                  name: realUser.name,
-                  email: realUser.credentials?.identity || realUser.email || email,
-                  role: realUser.role || 'User'
-                };
-                console.log('✅ Found real user data:', userData);
-              }
-            }
-          } catch (error) {
-            console.log('⚠️ Could not fetch real user data, using fallback');
-          }
-          
-          // Store user data for profile access
-          this.currentUser = userData;
-          localStorage.setItem('magistrala_user', JSON.stringify(userData));
-          
-          console.log(`✅ Magistrala authentication successful via ${endpoint.type}`);
-          return {
-            token: data.access_token,
-            refresh_token: data.refresh_token,
-            user: userData,
-            success: true,
-            endpoint: endpoint.type,
-            expires_in: data.expires_in
-          };
-=======
         if (response.ok || response.status === 404) { // 404 is OK if health endpoint doesn't exist
           results.accessible = true;
           results.workingEndpoints.push(endpoint);
           console.log(`✅ ${endpoint.type} accessible: ${endpoint.url}`);
->>>>>>> dev
         } else {
           results.errors.push(`${endpoint.type}: HTTP ${response.status}`);
           console.log(`⚠️ ${endpoint.type} returned: ${response.status}`);
@@ -525,18 +345,6 @@ class MagistralaAPI {
       }
     }
     
-<<<<<<< HEAD
-    console.warn('⚠️ No Magistrala instance detected. Use demo@magistrala.com / demo123 for demo mode.');
-    throw new Error('Authentication failed. No Magistrala instance found. Use demo@magistrala.com / demo123 for demo mode, or start a Magistrala instance.');
-  }
-
-  async createUser(user) {
-    // User creation does NOT require authentication in Magistrala
-    try {
-      const endpoints = [
-        { url: `${this.directUsersURL}/users`, type: 'direct' },
-        { url: `${this.usersURL}`, type: 'proxy' }
-=======
     // Generate recommendations based on results
     if (!results.accessible) {
       results.recommendations.push('1. Check if Magistrala services are running');
@@ -617,7 +425,6 @@ class MagistralaAPI {
       const endpoints = [
         { url: `${this.usersURL}`, type: 'proxy' },
         { url: `${this.directUsersURL}/users`, type: 'direct' }
->>>>>>> dev
       ];
       
       const userData = {
@@ -635,10 +442,7 @@ class MagistralaAPI {
           const response = await fetch(endpoint.url, {
             method: 'POST',
             headers: {
-<<<<<<< HEAD
-=======
               'Authorization': `Bearer ${this.token}`,
->>>>>>> dev
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(userData),
@@ -670,24 +474,6 @@ class MagistralaAPI {
 
   async getUserInfo() {
     try {
-<<<<<<< HEAD
-      // Return stored user data (from login response)
-      if (this.currentUser) {
-        console.log('✅ Returning stored user profile');
-        return this.currentUser;
-      }
-      
-      // Try to get from localStorage
-      const storedUser = localStorage.getItem('magistrala_user');
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          this.currentUser = userData;
-          console.log('✅ User profile retrieved from storage');
-          return userData;
-        } catch (e) {
-          console.log('❌ Failed to parse stored user data');
-=======
       // Try to get user profile from Magistrala API
       
       // Try to get user profile from Magistrala API
@@ -737,12 +523,11 @@ class MagistralaAPI {
           }
         } catch (error) {
           console.log(`User profile ${endpoint.type} error:`, error.message);
->>>>>>> dev
         }
       }
       
-      // Return default user info if no stored data
-      console.log('📱 Using default user profile (no stored data)');
+      // Return default user info if API calls fail
+      console.log('📱 Using default user profile (API unavailable)');
       return {
         id: 'user-default',
         name: 'User',
@@ -769,94 +554,6 @@ class MagistralaAPI {
 
   // Things Management (Devices/Clients) with enhanced API integration
   async getDevices(offset = 0, limit = 100) {
-<<<<<<< HEAD
-    if (!this.token) {
-      throw new Error('Authentication required. Please login first.');
-    }
-    
-    // Skip demo mode - always try real API first
-
-    try {
-      console.log('🔍 Fetching things from Magistrala API...');
-      
-      const endpoints = [
-        { url: `${this.thingsURL}?offset=${offset}&limit=${limit}`, type: 'proxy' },
-        { url: `${this.directThingsURL}/things?offset=${offset}&limit=${limit}`, type: 'direct' }
-      ];
-      
-      // Try preferred endpoint first (based on previous success)
-      const preferredType = this.workingEndpoints.things || 'proxy';
-      const sortedEndpoints = endpoints.sort((a, b) => 
-        a.type === preferredType ? -1 : b.type === preferredType ? 1 : 0
-      );
-      
-      for (const endpoint of sortedEndpoints) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-          
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json',
-            },
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Store working endpoint
-            this.workingEndpoints.things = endpoint.type;
-            
-            console.log(`✅ Successfully fetched ${data.things?.length || 0} things via ${endpoint.type}`);
-            
-            // Transform Magistrala things to our device format
-            const devices = {
-              clients: (data.things || []).map(thing => ({
-                id: thing.id,
-                name: thing.name || 'Unnamed Device',
-                status: this.getThingStatus(thing),
-                metadata: {
-                  ...thing.metadata,
-                  secret: thing.credentials?.secret, // Store secret for messaging
-                  created_at: thing.created_at,
-                  updated_at: thing.updated_at
-                },
-                secret: thing.credentials?.secret
-              })),
-              total: data.total || 0,
-              offset: data.offset || offset,
-              limit: data.limit || limit
-            };
-            
-            return devices;
-          } else if (response.status === 401) {
-            // Token expired, try to refresh
-            await this.refreshAccessToken();
-            if (this.token) {
-              continue; // Retry with refreshed token
-            }
-          } else {
-            console.log(`❌ Things ${endpoint.type} failed: ${response.status}`);
-          }
-        } catch (fetchError) {
-          if (fetchError.name === 'AbortError') {
-            console.log(`⏰ Things ${endpoint.type} timeout`);
-          } else {
-            console.log(`🔌 Things ${endpoint.type} error: ${fetchError.message}`);
-          }
-        }
-      }
-      
-      console.log('📦 All Things API endpoints failed, using mock data');
-      throw new Error('All Things API endpoints failed. Please check your Magistrala instance.');
-    } catch (error) {
-      console.error('Get devices error:', error);
-      throw error;
-=======
     try {
       if (this.debugMode) {
         console.log('🔍 Fetching devices/things from Magistrala API...');
@@ -940,7 +637,6 @@ class MagistralaAPI {
       }
       
       return this.getDemoDevices(offset, limit);
->>>>>>> dev
     }
   }
 
@@ -1052,8 +748,6 @@ class MagistralaAPI {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
-    
-    // Always use real API
 
     try {
       // Quick check: if we're in demo mode, skip API calls entirely
@@ -1167,11 +861,6 @@ class MagistralaAPI {
         }
       }
       
-<<<<<<< HEAD
-      throw new Error('All create thing endpoints failed. Please check your Magistrala instance.');
-    } catch (error) {
-      console.error('Create device error:', error);
-=======
       // Demo mode fallback for device creation
       if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
         console.log('🧪 Real Things API failed, creating demo device...');
@@ -1227,7 +916,6 @@ class MagistralaAPI {
         };
       }
       
->>>>>>> dev
       throw error;
     }
   }
@@ -1266,8 +954,8 @@ class MagistralaAPI {
       console.log(`🔧 Updating thing ${deviceId} in Magistrala...`);
       
       const endpoints = [
-        { url: `${this.directThingsURL}/things/${deviceId}`, type: 'direct' },
-        { url: `${this.thingsURL}/${deviceId}`, type: 'proxy' }
+        { url: `${this.thingsURL}/${deviceId}`, type: 'proxy' },
+        { url: `${this.directThingsURL}/things/${deviceId}`, type: 'direct' }
       ];
       
       // Prepare update data according to Magistrala API format
@@ -1279,7 +967,7 @@ class MagistralaAPI {
       for (const endpoint of endpoints) {
         try {
           const response = await fetch(endpoint.url, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: {
               'Authorization': `Bearer ${this.token}`,
               'Content-Type': 'application/json',
@@ -1399,8 +1087,6 @@ class MagistralaAPI {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
-    
-    // Always use real API
 
     try {
       console.log('🔍 Fetching channels from Magistrala API...');
@@ -1481,8 +1167,6 @@ class MagistralaAPI {
         }
       }
       
-<<<<<<< HEAD
-=======
       // If API fails, try to load from localStorage first
       const userId = this.getUserId();
       const storedChannels = dataStorage.getChannels(userId);
@@ -1557,7 +1241,6 @@ class MagistralaAPI {
         };
       }
       
->>>>>>> dev
       throw new Error('All Channels API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get channels error:', error);
@@ -1585,8 +1268,6 @@ class MagistralaAPI {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
-    
-    // Always use real API
 
     try {
       console.log('🔧 Creating channel in Magistrala...');
@@ -1654,8 +1335,6 @@ class MagistralaAPI {
         }
       }
       
-<<<<<<< HEAD
-=======
       // If API fails and we're in demo mode, create demo channel
       if (this.isDemoMode) {
         console.log('🧪 Demo mode detected, creating demo channel directly...');
@@ -1685,7 +1364,6 @@ class MagistralaAPI {
         return demoChannel;
       }
       
->>>>>>> dev
       throw new Error('All create channel endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create channel error:', error);
@@ -1794,8 +1472,6 @@ class MagistralaAPI {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
-    
-    // Always use real API
 
     try {
       console.log(`🔍 Fetching messages from channel ${channelId}...`);
