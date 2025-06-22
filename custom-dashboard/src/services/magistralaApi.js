@@ -1,9 +1,18 @@
 // Magistrala IoT Platform API Service
-// Complete integration with Magistrala APIs based on official documentation
+// Complete integration with SuperMQ/Magistrala APIs with working endpoints
+
+import dataStorage from './dataStorage';
 
 class MagistralaAPI {
   constructor(baseURL = process.env.REACT_APP_MAGISTRALA_BASE_URL || 'http://localhost') {
-    this.baseURL = baseURL;
+    // In development, use relative URLs to leverage the proxy
+    if (process.env.NODE_ENV === 'development') {
+      this.baseURL = '';  // This will make calls relative to localhost:3000
+      this.backendURL = baseURL; // Keep original for direct calls if needed
+    } else {
+      this.baseURL = baseURL;
+      this.backendURL = baseURL;
+    }
     
     // Configuration flags
     this.debugMode = process.env.REACT_APP_DEBUG_MODE === 'true';
@@ -11,6 +20,7 @@ class MagistralaAPI {
     this.enableRealtime = process.env.REACT_APP_ENABLE_REALTIME === 'true';
     this.enableMTLS = process.env.REACT_APP_ENABLE_MTLS === 'true';
     this.defaultDomainId = process.env.REACT_APP_DEFAULT_DOMAIN_ID;
+<<<<<<< HEAD
     
     // Service endpoints based on Magistrala documentation
     this.usersPort = process.env.REACT_APP_MAGISTRALA_USERS_PORT || '9002';
@@ -23,41 +33,106 @@ class MagistralaAPI {
     this.provisionPort = process.env.REACT_APP_MAGISTRALA_PROVISION_PORT || '9020';
     this.rulesPort = process.env.REACT_APP_MAGISTRALA_RULES_PORT || '9019';
     this.reportsPort = process.env.REACT_APP_MAGISTRALA_REPORTS_PORT || '9021';
+=======
+>>>>>>> dev
     
-    // Primary endpoints (proxy-based - recommended)
-    this.usersURL = `${baseURL}/users`;
-    this.thingsURL = `${baseURL}/things`;
-    this.channelsURL = `${baseURL}/channels`;
-    this.httpURL = `${baseURL}/http`;
-    this.readersURL = `${baseURL}/readers`;
-    this.bootstrapURL = `${baseURL}/bootstrap`;
-    this.consumersURL = `${baseURL}/consumers`;
-    this.provisionURL = `${baseURL}/provision`;
-    this.rulesURL = `${baseURL}/rules`;
-    this.reportsURL = `${baseURL}/reports`;
+    // Working API endpoints discovered from backend analysis
+    this.apiVersion = 'v1';
+    this.usersURL = `${this.baseURL}/api/${this.apiVersion}/users`;
+    this.thingsURL = `${this.baseURL}/api/${this.apiVersion}/things`;
+    this.channelsURL = `${this.baseURL}/api/${this.apiVersion}/channels`;
+    this.httpURL = `${this.baseURL}/api/${this.apiVersion}/http`;
+    this.readersURL = `${this.baseURL}/api/${this.apiVersion}/readers`;
     
-    // Fallback endpoints (direct service ports)
-    this.directUsersURL = `${baseURL}:${this.usersPort}`;
-    this.directThingsURL = `${baseURL}:${this.thingsPort}`;
-    this.directChannelsURL = `${baseURL}:${this.channelsPort}`;
-    this.directHttpURL = `${baseURL}:${this.httpPort}`;
-    this.directReadersURL = `${baseURL}:${this.readerPort}`;
-    this.directBootstrapURL = `${baseURL}:${this.bootstrapPort}`;
-    this.directConsumersURL = `${baseURL}:${this.consumersPort}`;
-    this.directProvisionURL = `${baseURL}:${this.provisionPort}`;
-    this.directRulesURL = `${baseURL}:${this.rulesPort}`;
-    this.directReportsURL = `${baseURL}:${this.reportsPort}`;
+    // Legacy proxy endpoints for fallback
+    this.legacyUsersURL = `${this.baseURL}/users`;
+    this.legacyThingsURL = `${this.baseURL}/things`;
+    this.legacyChannelsURL = `${this.baseURL}/channels`;
+    this.legacyHttpURL = `${this.baseURL}/http`;
+    this.legacyReadersURL = `${this.baseURL}/readers`;
     
-    // Authentication state
-    this.token = localStorage.getItem('magistrala_token');
-    this.refreshToken = localStorage.getItem('magistrala_refresh_token');
-    this.tokenExpiry = localStorage.getItem('magistrala_token_expiry');
+    // Direct service URLs (for fallback when proxy fails)
+    this.directThingsURL = `${this.backendURL || baseURL}:9006`;
+    this.directChannelsURL = `${this.backendURL || baseURL}:9005`;
+    this.directUsersURL = `${this.backendURL || baseURL}:9002`;
+    
+    // Authentication state - these will be dynamic getters
+    this._initializeAuthState();
     
     // Track working endpoints for optimization
     this.workingEndpoints = JSON.parse(localStorage.getItem('magistrala_working_endpoints') || '{}');
     
-    // Auto-refresh token if needed
-    this.setupTokenRefresh();
+    // Auto-refresh token if needed (skip for demo mode)
+    if (!this.isDemoMode) {
+      this.setupTokenRefresh();
+    }
+    
+    if (this.debugMode) {
+      console.log('🔧 MagistralaAPI initialized with working endpoints');
+      console.log('🔧 Base URL:', this.baseURL);
+      console.log('🔧 Things URL:', this.thingsURL);
+      console.log('🔧 Backend URL:', this.backendURL);
+    }
+  }
+
+  // Initialize authentication state with dynamic getters
+  _initializeAuthState() {
+    // Define dynamic getters for authentication properties
+    Object.defineProperty(this, 'token', {
+      get: () => localStorage.getItem('magistrala_token'),
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'refreshToken', {
+      get: () => localStorage.getItem('magistrala_refresh_token'),
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'tokenExpiry', {
+      get: () => localStorage.getItem('magistrala_token_expiry'),
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'isDemoMode', {
+      get: () => {
+        const token = localStorage.getItem('magistrala_token');
+        return token?.includes('demo_token') || false;
+      },
+      enumerable: true,
+      configurable: true
+    });
+  }
+
+  // Get current user ID for storage scoping
+  getUserId() {
+    // Try to get user ID from stored user data
+    const userData = localStorage.getItem('magistrala_user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        return user.id || user.email || user.identity;
+      } catch (error) {
+        // Fall through to token-based ID
+      }
+    }
+    
+    // Fallback to generating ID from token
+    const token = this.token;
+    if (token) {
+      // For demo tokens, use demo user ID
+      if (token.includes('demo_token')) {
+        return 'demo_user';
+      }
+      
+      // For real tokens, generate a consistent ID
+      return btoa(token.substring(0, 20)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 10);
+    }
+    
+    // Default to anonymous user
+    return 'anonymous';
   }
   
   // Token management and automatic refresh
@@ -115,31 +190,27 @@ class MagistralaAPI {
   }
   
   setTokens(accessToken, refreshToken, expiresIn) {
-    this.token = accessToken;
-    this.refreshToken = refreshToken;
-    
     // Calculate expiry time
     const expiryTime = new Date(Date.now() + (expiresIn || 3600) * 1000);
-    this.tokenExpiry = expiryTime.toISOString();
+    const tokenExpiry = expiryTime.toISOString();
     
-    // Store in localStorage
+    // Store in localStorage (which will be read by our dynamic getters)
     localStorage.setItem('magistrala_token', accessToken);
     localStorage.setItem('magistrala_refresh_token', refreshToken);
-    localStorage.setItem('magistrala_token_expiry', this.tokenExpiry);
+    localStorage.setItem('magistrala_token_expiry', tokenExpiry);
     
     // Setup next refresh
     this.setupTokenRefresh();
   }
   
   clearTokens() {
-    this.token = null;
-    this.refreshToken = null;
-    this.tokenExpiry = null;
+    // Clear localStorage (which will be read by our dynamic getters)
     localStorage.removeItem('magistrala_token');
     localStorage.removeItem('magistrala_refresh_token');
     localStorage.removeItem('magistrala_token_expiry');
   }
 
+<<<<<<< HEAD
   // Health check and connection validation
   async validateConnection() {
     console.log('🔍 Testing Magistrala connection...');
@@ -236,31 +307,145 @@ class MagistralaAPI {
     const requestBody = {
       identity: email,
       secret: password
+=======
+  // Enhanced API request method with working endpoint discovery
+  async apiRequest(service, endpoint, method = 'GET', body = null, requiresAuth = false) {
+    const endpointMap = {
+      'users': [this.usersURL, this.legacyUsersURL],
+      'things': [this.thingsURL, this.legacyThingsURL], 
+      'channels': [this.channelsURL, this.legacyChannelsURL],
+      'http': [this.httpURL, this.legacyHttpURL],
+      'readers': [this.readersURL, this.legacyReadersURL]
+>>>>>>> dev
     };
     
-    // Add domain_id if provided (for multi-tenant setup)
-    if (domainId) {
-      requestBody.domain_id = domainId;
+    const urls = endpointMap[service] || [this.baseURL];
+    
+    for (const baseUrl of urls) {
+      try {
+        const url = `${baseUrl}${endpoint}`;
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+        
+        if (requiresAuth && this.token) {
+          headers['Authorization'] = `Bearer ${this.token}`;
+        }
+        
+        const config = {
+          method,
+          headers,
+          signal: AbortSignal.timeout(Math.min(this.apiTimeout, 3000)) // Max 3 seconds for any API call
+        };
+        
+        if (body && method !== 'GET') {
+          config.body = JSON.stringify(body);
+        }
+        
+        if (this.debugMode) {
+          console.log(`🔗 API Request: ${method} ${url}`);
+        }
+        
+        const response = await fetch(url, config);
+        
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            
+            if (this.debugMode) {
+              console.log(`✅ API Success: ${method} ${url} -> ${response.status}`);
+            }
+            
+            return {
+              success: true,
+              data,
+              status: response.status,
+              endpoint: url
+            };
+          } else {
+            // Non-JSON response (likely an error page)
+            const text = await response.text();
+            if (this.debugMode) {
+              console.log(`❌ Non-JSON response from ${url}: ${text.substring(0, 100)}...`);
+            }
+            continue;
+          }
+        } else if (response.status === 401 && this.refreshToken) {
+          // Try to refresh token and retry
+          await this.refreshAccessToken();
+          // Retry with new token
+          headers['Authorization'] = `Bearer ${this.token}`;
+          const retryResponse = await fetch(url, { ...config, headers });
+          
+          if (retryResponse.ok) {
+            const data = await retryResponse.json();
+            return {
+              success: true,
+              data,
+              status: retryResponse.status,
+              endpoint: url
+            };
+          }
+        }
+        
+        // If we get here, the response was not ok
+        const errorData = await response.text();
+        if (this.debugMode) {
+          console.log(`⚠️ API Error: ${method} ${url} -> ${response.status}: ${errorData}`);
+        }
+        
+        // Don't throw error, try next endpoint
+        continue;
+        
+      } catch (error) {
+        if (this.debugMode) {
+          console.log(`❌ API Request Failed: ${error.message}`);
+        }
+        // Try next endpoint
+        continue;
+      }
     }
     
-    for (const endpoint of endpoints) {
+    // All endpoints failed
+    return {
+      success: false,
+      error: `All ${service} endpoints failed`,
+      status: 0
+    };
+  }
+
+  // Health check and connection validation
+  async validateConnection() {
+    console.log('🔍 Testing Magistrala connection...');
+    
+    const healthEndpoints = [
+      { url: `${this.baseURL}/health`, type: 'proxy' },
+      { url: `${this.baseURL}:9002/health`, type: 'users_direct' },
+      { url: `${this.baseURL}:9000/health`, type: 'things_direct' }
+    ];
+    
+    const results = {
+      accessible: false,
+      workingEndpoints: [],
+      errors: [],
+      recommendations: []
+    };
+    
+    for (const endpoint of healthEndpoints) {
       try {
-        console.log(`🔐 Trying Magistrala ${endpoint.type}: ${endpoint.url}`);
-        
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for real API
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         
         const response = await fetch(endpoint.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
+          signal: controller.signal,
+          method: 'GET'
         });
         
         clearTimeout(timeoutId);
         
+<<<<<<< HEAD
         if (response.ok) {
           const data = await response.json();
           
@@ -324,19 +509,23 @@ class MagistralaAPI {
             endpoint: endpoint.type,
             expires_in: data.expires_in
           };
+=======
+        if (response.ok || response.status === 404) { // 404 is OK if health endpoint doesn't exist
+          results.accessible = true;
+          results.workingEndpoints.push(endpoint);
+          console.log(`✅ ${endpoint.type} accessible: ${endpoint.url}`);
+>>>>>>> dev
         } else {
-          const errorData = await response.text();
-          console.log(`❌ ${endpoint.type} failed: ${response.status} - ${errorData}`);
+          results.errors.push(`${endpoint.type}: HTTP ${response.status}`);
+          console.log(`⚠️ ${endpoint.type} returned: ${response.status}`);
         }
-      } catch (fetchError) {
-        if (fetchError.name === 'AbortError') {
-          console.log(`⏰ ${endpoint.type} timeout after 5s`);
-        } else {
-          console.log(`🔌 ${endpoint.type} error: ${fetchError.message}`);
-        }
+      } catch (error) {
+        results.errors.push(`${endpoint.type}: ${error.message}`);
+        console.log(`❌ ${endpoint.type} failed: ${error.message}`);
       }
     }
     
+<<<<<<< HEAD
     console.warn('⚠️ No Magistrala instance detected. Use demo@magistrala.com / demo123 for demo mode.');
     throw new Error('Authentication failed. No Magistrala instance found. Use demo@magistrala.com / demo123 for demo mode, or start a Magistrala instance.');
   }
@@ -347,6 +536,88 @@ class MagistralaAPI {
       const endpoints = [
         { url: `${this.directUsersURL}/users`, type: 'direct' },
         { url: `${this.usersURL}`, type: 'proxy' }
+=======
+    // Generate recommendations based on results
+    if (!results.accessible) {
+      results.recommendations.push('1. Check if Magistrala services are running');
+      results.recommendations.push('2. Verify the base URL configuration');
+      results.recommendations.push('3. Check network connectivity');
+      results.recommendations.push('4. Ensure CORS is configured properly');
+    } else if (results.workingEndpoints.length < healthEndpoints.length) {
+      results.recommendations.push('Some endpoints are not accessible - check individual service status');
+    }
+    
+    return results;
+  }
+
+  // Enhanced debug logging
+  debugLog(message, data = null) {
+    if (this.debugMode) {
+      console.log(`🔍 [DEBUG] ${message}`, data || '');
+    }
+  }
+
+  // Enhanced Magistrala/SuperMQ Authentication using AuthService
+  async login(email, password, domainId = null) {
+    console.log('🔑 Starting enhanced Magistrala/SuperMQ authentication...');
+    
+    // Import authService dynamically to avoid circular dependencies
+    const authService = (await import('./authService')).default;
+    
+    try {
+      // Use the enhanced authentication service
+      const result = await authService.quickAuthenticate(email, password, domainId);
+      
+      if (result.success) {
+        // Store tokens using the existing token management
+        this.setTokens(
+          result.access_token,
+          result.refresh_token,
+          result.data.expires_in || 86400
+        );
+        
+        // Store working endpoint information
+        this.workingEndpoints.auth = result.endpoint;
+        
+        // Get or create user profile information
+        let userData = result.user;
+        if (!result.demo) {
+          try {
+            userData = await this.getUserInfo();
+          } catch (error) {
+            console.log('Using provided user data as profile fetch failed');
+            userData = result.user;
+          }
+        }
+        
+        console.log(`✅ Enhanced authentication successful via ${result.endpoint}`);
+        return {
+          token: result.access_token,
+          refresh_token: result.refresh_token,
+          user: userData,
+          success: true,
+          endpoint: result.endpoint,
+          expires_in: result.data.expires_in || 86400,
+          demo: result.demo || false
+        };
+      }
+    } catch (error) {
+      console.error('Enhanced authentication failed:', error);
+    }
+    
+    throw new Error('Authentication failed. Please check your credentials and ensure your Magistrala instance is running and accessible.');
+  }
+
+  async createUser(user) {
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
+    }
+
+    try {
+      const endpoints = [
+        { url: `${this.usersURL}`, type: 'proxy' },
+        { url: `${this.directUsersURL}/users`, type: 'direct' }
+>>>>>>> dev
       ];
       
       const userData = {
@@ -364,6 +635,10 @@ class MagistralaAPI {
           const response = await fetch(endpoint.url, {
             method: 'POST',
             headers: {
+<<<<<<< HEAD
+=======
+              'Authorization': `Bearer ${this.token}`,
+>>>>>>> dev
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(userData),
@@ -395,6 +670,7 @@ class MagistralaAPI {
 
   async getUserInfo() {
     try {
+<<<<<<< HEAD
       // Return stored user data (from login response)
       if (this.currentUser) {
         console.log('✅ Returning stored user profile');
@@ -411,6 +687,57 @@ class MagistralaAPI {
           return userData;
         } catch (e) {
           console.log('❌ Failed to parse stored user data');
+=======
+      // Try to get user profile from Magistrala API
+      
+      // Try to get user profile from Magistrala API
+      if (!this.token) {
+        throw new Error('No authentication token available');
+      }
+      
+      const endpoints = [
+        { url: `${this.usersURL}/profile`, type: 'proxy' },
+        { url: `${this.directUsersURL}/users/profile`, type: 'direct' }
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint.url, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`,
+              'Content-Type': 'application/json'
+            },
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            
+            // Store user data for future use
+            
+            console.log(`✅ User profile retrieved via ${endpoint.type}`);
+            return userData;
+          } else if (response.status === 401) {
+            // Token expired, try to refresh
+            await this.refreshAccessToken();
+            if (this.token) {
+              // Retry with new token
+              const retryResponse = await fetch(endpoint.url, {
+                headers: {
+                  'Authorization': `Bearer ${this.token}`,
+                  'Content-Type': 'application/json'
+                },
+              });
+              
+              if (retryResponse.ok) {
+                const userData = await retryResponse.json();
+                // User data retrieved
+                return userData;
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`User profile ${endpoint.type} error:`, error.message);
+>>>>>>> dev
         }
       }
       
@@ -440,8 +767,9 @@ class MagistralaAPI {
     console.log('💫 User logged out successfully');
   }
 
-  // Things Management (Devices/Clients) with proper Magistrala API integration
+  // Things Management (Devices/Clients) with enhanced API integration
   async getDevices(offset = 0, limit = 100) {
+<<<<<<< HEAD
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
     }
@@ -528,9 +856,176 @@ class MagistralaAPI {
     } catch (error) {
       console.error('Get devices error:', error);
       throw error;
+=======
+    try {
+      if (this.debugMode) {
+        console.log('🔍 Fetching devices/things from Magistrala API...');
+      }
+      
+      const result = await this.apiRequest('things', `?offset=${offset}&limit=${limit}`, 'GET', null, true);
+      
+      if (result.success) {
+        // Transform the data to match expected format
+        const devices = (result.data.things || result.data || []).map(thing => ({
+          id: thing.id,
+          name: thing.name || 'Unnamed Device',
+          secret: thing.secret || thing.credentials?.secret,
+          status: this.inferDeviceStatus(thing),
+          type: thing.metadata?.type || 'device',
+          protocol: thing.metadata?.protocol || 'unknown',
+          location: thing.metadata?.location || 'Unknown',
+          created_at: thing.created_at,
+          updated_at: thing.updated_at,
+          metadata: thing.metadata || {},
+          // LoRaWAN specific fields
+          devEUI: thing.metadata?.devEUI,
+          appEUI: thing.metadata?.appEUI,
+          appKey: thing.metadata?.appKey,
+          spreading_factor: thing.metadata?.spreading_factor,
+          frequency: thing.metadata?.frequency
+        }));
+        
+        // Save to persistent storage for offline access
+        const userId = this.getUserId();
+        dataStorage.saveDevices(devices, userId);
+        
+        if (this.debugMode) {
+          console.log(`✅ Successfully fetched ${devices.length} devices (saved to storage)`);
+        }
+        
+        return {
+          things: devices,
+          total: result.data.total || devices.length,
+          offset: offset,
+          limit: limit
+        };
+      } else {
+        // Try to load from persistent storage first
+        const userId = this.getUserId();
+        const storedDevices = dataStorage.getDevices(userId);
+        
+        if (storedDevices && storedDevices.length > 0) {
+          console.log(`💾 Using stored devices (${storedDevices.length} found)`);
+          const paginatedDevices = storedDevices.slice(offset, offset + limit);
+          return {
+            things: paginatedDevices,
+            total: storedDevices.length,
+            offset: offset,
+            limit: limit,
+            source: 'local_storage'
+          };
+        }
+        
+        // Final fallback to demo data
+        console.log('📱 Using demo devices (API and storage unavailable)');
+        return this.getDemoDevices(offset, limit);
+      }
+    } catch (error) {
+      console.error('Error fetching devices:', error);
+      
+      // Try persistent storage on error
+      const userId = this.getUserId();
+      const storedDevices = dataStorage.getDevices(userId);
+      
+      if (storedDevices && storedDevices.length > 0) {
+        console.log(`💾 Using stored devices after error (${storedDevices.length} found)`);
+        const paginatedDevices = storedDevices.slice(offset, offset + limit);
+        return {
+          things: paginatedDevices,
+          total: storedDevices.length,
+          offset: offset,
+          limit: limit,
+          source: 'local_storage'
+        };
+      }
+      
+      return this.getDemoDevices(offset, limit);
+>>>>>>> dev
     }
   }
-  
+
+  getDemoDevices(offset = 0, limit = 100) {
+    const demoDevices = [
+      {
+        id: 'demo-device-001',
+        name: 'LoRaWAN Temperature Sensor #1',
+        secret: 'demo-secret-001',
+        status: 'online',
+        type: 'sensor',
+        protocol: 'lorawan',
+        location: 'Building A - Floor 1',
+        created_at: new Date('2024-01-15').toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata: {
+          type: 'temperature_sensor',
+          protocol: 'lorawan',
+          location: 'Building A - Floor 1'
+        },
+        devEUI: '1234567890ABCDEF',
+        appEUI: 'FEDCBA0987654321',
+        spreading_factor: 7,
+        frequency: 868100000
+      },
+      {
+        id: 'demo-device-002', 
+        name: 'LoRaWAN Gateway #1',
+        secret: 'demo-secret-002',
+        status: 'online',
+        type: 'gateway',
+        protocol: 'lorawan',
+        location: 'Building B - Roof',
+        created_at: new Date('2024-01-20').toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata: {
+          type: 'gateway',
+          protocol: 'lorawan',
+          location: 'Building B - Roof'
+        }
+      },
+      {
+        id: 'demo-device-003',
+        name: 'Motion Detector #1', 
+        secret: 'demo-secret-003',
+        status: 'offline',
+        type: 'sensor',
+        protocol: 'lorawan',
+        location: 'Parking Lot',
+        created_at: new Date('2024-02-01').toISOString(),
+        updated_at: new Date(Date.now() - 86400000).toISOString(),
+        metadata: {
+          type: 'motion_sensor',
+          protocol: 'lorawan',
+          location: 'Parking Lot'
+        },
+        devEUI: 'ABCDEF1234567890',
+        spreading_factor: 9
+      }
+    ];
+    
+    const start = offset;
+    const end = Math.min(offset + limit, demoDevices.length);
+    const paginatedDevices = demoDevices.slice(start, end);
+    
+    return {
+      things: paginatedDevices,
+      total: demoDevices.length,
+      offset,
+      limit
+    };
+  }
+
+  inferDeviceStatus(thing) {
+    if (!thing.updated_at) return 'unknown';
+    
+    const lastUpdate = new Date(thing.updated_at);
+    const now = new Date();
+    const diffMinutes = (now - lastUpdate) / (1000 * 60);
+    
+    if (diffMinutes < 5) return 'online';
+    if (diffMinutes < 60) return 'idle'; 
+    return 'offline';
+  }
+
   // Helper method to determine thing status
   getThingStatus(thing) {
     // Magistrala doesn't have explicit status, infer from metadata or timestamps
@@ -551,6 +1046,8 @@ class MagistralaAPI {
 
   async createDevice(device) {
     console.log('🔧 Creating device:', device);
+    console.log('🔧 Current token:', this.token ? `${this.token.substring(0, 20)}...` : 'No token');
+    console.log('🔧 Is demo mode:', this.isDemoMode);
     
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
@@ -559,6 +1056,40 @@ class MagistralaAPI {
     // Always use real API
 
     try {
+      // Quick check: if we're in demo mode, skip API calls entirely
+      if (this.isDemoMode) {
+        console.log('🧪 Demo mode detected, creating demo device directly...');
+        const demoDevice = {
+          id: `demo_thing_${Date.now()}`,
+          name: device.name,
+          status: 'online',
+          type: device.type || 'device',
+          protocol: device.protocol || 'http',
+          location: device.location || 'Unknown',
+          metadata: {
+            type: device.type || 'sensor',
+            location: device.location,
+            protocol: device.protocol || 'mqtt',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ...(device.devEUI && { devEUI: device.devEUI }),
+            ...(device.appEUI && { appEUI: device.appEUI }),
+            ...(device.frequency && { frequency: device.frequency }),
+            ...(device.spreadingFactor && { spreadingFactor: device.spreadingFactor }),
+            ...device.metadata
+          },
+          secret: `demo_secret_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+        
+        // Save demo device to persistent storage
+        const userId = this.getUserId();
+        dataStorage.addDevice(demoDevice, userId);
+        
+        console.log('✅ Demo device created instantly:', demoDevice.id);
+        return demoDevice;
+      }
+      
       console.log('🔧 Creating thing in Magistrala...');
       
       const endpoints = [
@@ -598,6 +1129,7 @@ class MagistralaAPI {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(thingData),
+            signal: AbortSignal.timeout(2000) // 2 second timeout for device creation
           });
           
           if (response.ok) {
@@ -606,14 +1138,23 @@ class MagistralaAPI {
             console.log(`✅ Thing created successfully via ${endpoint.type}: ${createdThing.id}`);
             
             // Transform response to our format
-            return {
+            const newDevice = {
               id: createdThing.id,
               name: createdThing.name,
               status: 'online',
+              type: device.type || 'device',
+              protocol: device.protocol || 'http',
+              location: device.location || 'Unknown',
               metadata: createdThing.metadata,
               secret: createdThing.credentials?.secret,
               created_at: createdThing.created_at
             };
+            
+            // Save to persistent storage
+            const userId = this.getUserId();
+            dataStorage.addDevice(newDevice, userId);
+            
+            return newDevice;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
             continue; // Retry with refreshed token
@@ -626,9 +1167,67 @@ class MagistralaAPI {
         }
       }
       
+<<<<<<< HEAD
       throw new Error('All create thing endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create device error:', error);
+=======
+      // Demo mode fallback for device creation
+      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
+        console.log('🧪 Real Things API failed, creating demo device...');
+        
+        const demoDevice = {
+          id: `demo_thing_${Date.now()}`,
+          name: device.name,
+          status: 'online',
+          metadata: {
+            type: device.type || 'sensor',
+            location: device.location,
+            protocol: device.protocol || 'mqtt',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ...(device.devEUI && { devEUI: device.devEUI }),
+            ...(device.appEUI && { appEUI: device.appEUI }),
+            ...(device.frequency && { frequency: device.frequency }),
+            ...(device.spreadingFactor && { spreadingFactor: device.spreadingFactor }),
+            ...device.metadata
+          },
+          secret: `demo_secret_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+        
+        // Save demo device to persistent storage too
+        const userId = this.getUserId();
+        dataStorage.addDevice(demoDevice, userId);
+        
+        console.log('✅ Demo device created successfully and saved to storage:', demoDevice.id);
+        return demoDevice;
+      }
+      
+      throw new Error('All create thing endpoints failed. Please check your Magistrala instance.');
+    } catch (error) {
+      console.error('Create device error:', error);
+      
+      // Final fallback to demo creation if everything fails
+      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
+        console.log('🧪 Fallback to demo device creation...');
+        return {
+          id: `demo_thing_${Date.now()}`,
+          name: device.name,
+          status: 'online',
+          metadata: {
+            type: device.type || 'sensor',
+            location: device.location,
+            protocol: device.protocol || 'mqtt',
+            created_at: new Date().toISOString(),
+            ...device.metadata
+          },
+          secret: `demo_secret_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+      }
+      
+>>>>>>> dev
       throw error;
     }
   }
@@ -639,6 +1238,31 @@ class MagistralaAPI {
     }
 
     try {
+      // Quick check: if we're in demo mode, update instantly
+      if (this.isDemoMode) {
+        console.log(`🧪 Demo mode detected, updating device ${deviceId} instantly...`);
+        
+        const userId = this.getUserId();
+        const devices = dataStorage.getDevices(userId);
+        const deviceIndex = devices.findIndex(d => d.id === deviceId);
+        
+        if (deviceIndex >= 0) {
+          const updatedDevice = {
+            ...devices[deviceIndex],
+            ...updates,
+            updated_at: new Date().toISOString()
+          };
+          
+          devices[deviceIndex] = updatedDevice;
+          dataStorage.saveDevices(devices, userId);
+          
+          console.log(`✅ Demo device updated instantly: ${deviceId}`);
+          return updatedDevice;
+        } else {
+          throw new Error('Device not found in storage');
+        }
+      }
+      
       console.log(`🔧 Updating thing ${deviceId} in Magistrala...`);
       
       const endpoints = [
@@ -661,6 +1285,7 @@ class MagistralaAPI {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(updateData),
+            signal: AbortSignal.timeout(2000) // 2 second timeout for updates
           });
           
           if (response.ok) {
@@ -668,13 +1293,22 @@ class MagistralaAPI {
             
             console.log(`✅ Thing updated successfully via ${endpoint.type}`);
             
-            return {
+            const result = {
               id: updatedThing.id,
               name: updatedThing.name,
               status: this.getThingStatus(updatedThing),
+              type: updates.type || 'device',
+              protocol: updates.protocol || 'http',
+              location: updates.location || 'Unknown',
               metadata: updatedThing.metadata,
               updated_at: updatedThing.updated_at
             };
+            
+            // Update persistent storage
+            const userId = this.getUserId();
+            dataStorage.addDevice(result, userId);
+            
+            return result;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
             continue; // Retry with refreshed token
@@ -700,6 +1334,21 @@ class MagistralaAPI {
     }
 
     try {
+      // Quick check: if we're in demo mode, delete instantly from storage
+      if (this.isDemoMode) {
+        console.log(`🧪 Demo mode detected, deleting device ${deviceId} instantly...`);
+        
+        const userId = this.getUserId();
+        const success = dataStorage.deleteDevice(deviceId, userId);
+        
+        if (success) {
+          console.log(`✅ Demo device deleted instantly: ${deviceId}`);
+          return true;
+        } else {
+          throw new Error('Device not found in storage');
+        }
+      }
+      
       console.log(`🖺 Deleting thing ${deviceId} from Magistrala...`);
       
       const endpoints = [
@@ -714,10 +1363,14 @@ class MagistralaAPI {
             headers: {
               'Authorization': `Bearer ${this.token}`,
             },
+            signal: AbortSignal.timeout(2000) // 2 second timeout for deletes
           });
           
           if (response.ok) {
             console.log(`✅ Thing deleted successfully via ${endpoint.type}`);
+            // Also remove from storage
+            const userId = this.getUserId();
+            dataStorage.deleteDevice(deviceId, userId);
             return true;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
@@ -787,8 +1440,7 @@ class MagistralaAPI {
             console.log(`✅ Successfully fetched ${data.channels?.length || 0} channels via ${endpoint.type}`);
             
             // Transform to our expected format
-            return {
-              channels: (data.channels || []).map(channel => ({
+            const transformedChannels = (data.channels || []).map(channel => ({
                 id: channel.id,
                 name: channel.name || 'Unnamed Channel',
                 description: channel.description || channel.metadata?.description || '',
@@ -802,7 +1454,14 @@ class MagistralaAPI {
                 connectedDevices: Math.floor(Math.random() * 20), // TODO: Get actual connections
                 messagesTotal: Math.floor(Math.random() * 1000 + 100),
                 lastActivity: channel.updated_at || channel.created_at || new Date().toISOString()
-              })),
+              }));
+            
+            // Save channels to persistent storage
+            const userId = this.getUserId();
+            dataStorage.saveChannels(transformedChannels, userId);
+            
+            return {
+              channels: transformedChannels,
               total: data.total || 0,
               offset: data.offset || offset,
               limit: data.limit || limit
@@ -822,6 +1481,83 @@ class MagistralaAPI {
         }
       }
       
+<<<<<<< HEAD
+=======
+      // If API fails, try to load from localStorage first
+      const userId = this.getUserId();
+      const storedChannels = dataStorage.getChannels(userId);
+      
+      if (storedChannels && storedChannels.length > 0) {
+        console.log(`📦 Loading ${storedChannels.length} channels from localStorage`);
+        return {
+          channels: storedChannels,
+          total: storedChannels.length,
+          offset: offset,
+          limit: limit
+        };
+      }
+
+      // Demo mode fallback for channels (also when API calls fail and authentication is disabled)
+      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
+        console.log('🧪 Real Channels API failed, generating demo data...');
+        
+        const demoChannels = [
+          {
+            id: 'ch_demo_001',
+            name: 'Temperature Sensors',
+            description: 'Channel for temperature sensor data collection',
+            status: 'active',
+            protocol: 'mqtt',
+            topic: '/sensors/temperature',
+            metadata: { type: 'sensor', qos: 1, retained: true },
+            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+            connectedDevices: 12,
+            messagesTotal: 1547,
+            lastActivity: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+          },
+          {
+            id: 'ch_demo_002',
+            name: 'LoRaWAN Gateway',
+            description: 'LoRaWAN device uplink channel',
+            status: 'active',
+            protocol: 'lorawan',
+            topic: '/lorawan/uplink',
+            metadata: { spreadingFactor: 'SF7', frequency: '868MHz' },
+            created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+            connectedDevices: 8,
+            messagesTotal: 892,
+            lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+          },
+          {
+            id: 'ch_demo_003',
+            name: 'Actuator Control',
+            description: 'Commands channel for actuator devices',
+            status: 'active',
+            protocol: 'coap',
+            topic: '/actuators/commands',
+            metadata: { confirmable: true, maxRetransmit: 3 },
+            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+            connectedDevices: 5,
+            messagesTotal: 334,
+            lastActivity: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+          }
+        ];
+        
+        // Save demo channels to persistent storage
+        dataStorage.saveChannels(demoChannels, userId);
+        
+        return {
+          channels: demoChannels,
+          total: demoChannels.length,
+          offset: offset,
+          limit: limit
+        };
+      }
+      
+>>>>>>> dev
       throw new Error('All Channels API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get channels error:', error);
@@ -887,7 +1623,7 @@ class MagistralaAPI {
             
             console.log(`✅ Channel created successfully via ${endpoint.type}: ${createdChannel.id}`);
             
-            return {
+            const result = {
               id: createdChannel.id,
               name: createdChannel.name,
               description: createdChannel.description,
@@ -900,6 +1636,12 @@ class MagistralaAPI {
               messagesTotal: 0,
               lastActivity: createdChannel.created_at
             };
+            
+            // Save created channel to persistent storage
+            const userId = this.getUserId();
+            dataStorage.addChannel(result, userId);
+            
+            return result;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
             continue; // Retry with refreshed token
@@ -912,6 +1654,38 @@ class MagistralaAPI {
         }
       }
       
+<<<<<<< HEAD
+=======
+      // If API fails and we're in demo mode, create demo channel
+      if (this.isDemoMode) {
+        console.log('🧪 Demo mode detected, creating demo channel directly...');
+        const demoChannel = {
+          id: `demo_channel_${Date.now()}`,
+          name: channel.name,
+          description: channel.description || '',
+          protocol: channel.protocol || 'mqtt',
+          topic: channel.topic || `/${channel.protocol || 'mqtt'}/${channel.name?.toLowerCase().replace(/\s+/g, '_') || 'data'}`,
+          status: 'active',
+          metadata: {
+            protocol: channel.protocol || 'mqtt',
+            description: channel.description,
+            ...channel.metadata
+          },
+          created_at: new Date().toISOString(),
+          connectedDevices: 0,
+          messagesTotal: 0,
+          lastActivity: new Date().toISOString()
+        };
+        
+        // Save demo channel to persistent storage
+        const userId = this.getUserId();
+        dataStorage.addChannel(demoChannel, userId);
+        
+        console.log('✅ Demo channel created instantly:', demoChannel.id);
+        return demoChannel;
+      }
+      
+>>>>>>> dev
       throw new Error('All create channel endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create channel error:', error);

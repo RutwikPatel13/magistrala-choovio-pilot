@@ -4,10 +4,14 @@ import styled from 'styled-components';
 import { 
   FiHome, 
   FiLayers, 
+  FiBarChart, 
   FiSettings,
   FiWifi,
+  FiDatabase,
   FiRadio,
-  FiMessageSquare
+  FiMessageSquare,
+  FiUsers,
+  FiShield
 } from 'react-icons/fi';
 
 const SidebarContainer = styled.nav`
@@ -87,14 +91,18 @@ const Sidebar = () => {
           <FiLayers className="nav-icon" />
           <span className="nav-text">Device Management</span>
         </NavItem>
-      </SidebarSection>
-      
-      <SidebarSection>
-        <SectionTitle>IoT Platform</SectionTitle>
         <NavItem to="/lorawan">
           <FiRadio className="nav-icon" />
           <span className="nav-text">LoRaWAN Network</span>
         </NavItem>
+        <NavItem to="/analytics">
+          <FiBarChart className="nav-icon" />
+          <span className="nav-text">Analytics</span>
+        </NavItem>
+      </SidebarSection>
+      
+      <SidebarSection>
+        <SectionTitle>IoT Platform</SectionTitle>
         <NavItem to="/channels">
           <FiWifi className="nav-icon" />
           <span className="nav-text">Channels</span>
@@ -102,6 +110,22 @@ const Sidebar = () => {
         <NavItem to="/messages">
           <FiMessageSquare className="nav-icon" />
           <span className="nav-text">Messages</span>
+        </NavItem>
+        <NavItem to="/data">
+          <FiDatabase className="nav-icon" />
+          <span className="nav-text">Data Storage</span>
+        </NavItem>
+      </SidebarSection>
+      
+      <SidebarSection>
+        <SectionTitle>Management</SectionTitle>
+        <NavItem to="/users">
+          <FiUsers className="nav-icon" />
+          <span className="nav-text">User Management</span>
+        </NavItem>
+        <NavItem to="/security">
+          <FiShield className="nav-icon" />
+          <span className="nav-text">Security</span>
         </NavItem>
       </SidebarSection>
       
