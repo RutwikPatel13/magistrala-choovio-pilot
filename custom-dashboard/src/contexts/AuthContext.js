@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import magistralaApi from '../services/magistralaApi';
+import dataStorage from '../services/dataStorage';
 
 const AuthContext = createContext();
 
@@ -118,10 +119,20 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
   };
 
-  const logout = async () => {
+  const logout = async (clearUserData = false) => {
     try {
+      const userId = magistralaApi.getUserId();
+      
       // Use the API logout method to properly clear all tokens
       magistralaApi.logout();
+      
+      // Optionally clear user's persistent data (devices, channels, etc.)
+      if (clearUserData && userId && userId !== 'anonymous') {
+        dataStorage.clearUserData(userId);
+        console.log('🗑️ User data cleared from storage');
+      } else {
+        console.log('💾 User data preserved in storage for next login');
+      }
       
       // Clear local state
       setUser(null);

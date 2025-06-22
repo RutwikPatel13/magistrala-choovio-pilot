@@ -496,6 +496,7 @@ const Button = styled.button`
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
+  const [allMessages, setAllMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalMessages, setTotalMessages] = useState(0);
@@ -530,7 +531,16 @@ const Messages = () => {
   useEffect(() => {
     loadMessages();
     loadChannelsAndThings();
-  }, [currentPage, filters]);
+  }, [currentPage]);
+
+  // Separate effect for filtering existing messages when filters change
+  useEffect(() => {
+    if (allMessages.length > 0) {
+      const filteredMessages = applyFilters(allMessages);
+      setMessages(filteredMessages);
+      setTotalMessages(filteredMessages.length);
+    }
+  }, [filters, allMessages]);
 
   const loadChannelsAndThings = async () => {
     try {
@@ -576,14 +586,12 @@ const Messages = () => {
         allMessages = generateMockMessages();
       }
       
-      // Apply filters
-      const filteredMessages = applyFilters(allMessages);
-      setMessages(filteredMessages);
-      setTotalMessages(filteredMessages.length);
+      // Store all messages and let the filter effect handle filtering
+      setAllMessages(allMessages);
       
       // Calculate stats
       setStats({
-        totalMessages: filteredMessages.length,
+        totalMessages: allMessages.length,
         messagesPerSecond: Math.floor(Math.random() * 50 + 20),
         dataVolume: (Math.random() * 5 + 2).toFixed(1),
         activeChannels: channels.filter(c => c.status === 'active').length
@@ -592,8 +600,7 @@ const Messages = () => {
     } catch (error) {
       console.error('Failed to load messages:', error);
       const mockMessages = generateMockMessages();
-      setMessages(mockMessages);
-      setTotalMessages(mockMessages.length);
+      setAllMessages(mockMessages);
       setStats({
         totalMessages: mockMessages.length,
         messagesPerSecond: 34,

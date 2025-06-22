@@ -1,56 +1,123 @@
 // Magistrala IoT Platform API Service
-// Complete integration with Magistrala APIs based on official documentation
+// Complete integration with SuperMQ/Magistrala APIs with working endpoints
+
+import dataStorage from './dataStorage';
 
 class MagistralaAPI {
   constructor(baseURL = process.env.REACT_APP_MAGISTRALA_BASE_URL || 'http://localhost') {
-    this.baseURL = baseURL;
+    // In development, use relative URLs to leverage the proxy
+    if (process.env.NODE_ENV === 'development') {
+      this.baseURL = '';  // This will make calls relative to localhost:3000
+      this.backendURL = baseURL; // Keep original for direct calls if needed
+    } else {
+      this.baseURL = baseURL;
+      this.backendURL = baseURL;
+    }
     
-    // Service endpoints based on Magistrala documentation
-    this.usersPort = process.env.REACT_APP_MAGISTRALA_USERS_PORT || '9002';
-    this.thingsPort = process.env.REACT_APP_MAGISTRALA_THINGS_PORT || '9000';
-    this.channelsPort = process.env.REACT_APP_MAGISTRALA_CHANNELS_PORT || '9005';
-    this.httpPort = process.env.REACT_APP_MAGISTRALA_HTTP_PORT || '8008';
-    this.readerPort = process.env.REACT_APP_MAGISTRALA_READER_PORT || '9009';
-    this.bootstrapPort = process.env.REACT_APP_MAGISTRALA_BOOTSTRAP_PORT || '9013';
-    this.consumersPort = process.env.REACT_APP_MAGISTRALA_CONSUMERS_PORT || '9016';
-    this.provisionPort = process.env.REACT_APP_MAGISTRALA_PROVISION_PORT || '9020';
-    this.rulesPort = process.env.REACT_APP_MAGISTRALA_RULES_PORT || '9019';
-    this.reportsPort = process.env.REACT_APP_MAGISTRALA_REPORTS_PORT || '9021';
+    // Configuration flags
+    this.debugMode = process.env.REACT_APP_DEBUG_MODE === 'true';
+    this.apiTimeout = parseInt(process.env.REACT_APP_API_TIMEOUT) || 5000;
+    this.enableRealtime = process.env.REACT_APP_ENABLE_REALTIME === 'true';
+    this.enableMTLS = process.env.REACT_APP_ENABLE_MTLS === 'true';
+    this.defaultDomainId = process.env.REACT_APP_DEFAULT_DOMAIN_ID;
     
-    // Primary endpoints (proxy-based - recommended)
-    this.usersURL = `${baseURL}/users`;
-    this.thingsURL = `${baseURL}/things`;
-    this.channelsURL = `${baseURL}/channels`;
-    this.httpURL = `${baseURL}/http`;
-    this.readersURL = `${baseURL}/readers`;
-    this.bootstrapURL = `${baseURL}/bootstrap`;
-    this.consumersURL = `${baseURL}/consumers`;
-    this.provisionURL = `${baseURL}/provision`;
-    this.rulesURL = `${baseURL}/rules`;
-    this.reportsURL = `${baseURL}/reports`;
+    // Working API endpoints discovered from backend analysis
+    this.apiVersion = 'v1';
+    this.usersURL = `${this.baseURL}/api/${this.apiVersion}/users`;
+    this.thingsURL = `${this.baseURL}/api/${this.apiVersion}/things`;
+    this.channelsURL = `${this.baseURL}/api/${this.apiVersion}/channels`;
+    this.httpURL = `${this.baseURL}/api/${this.apiVersion}/http`;
+    this.readersURL = `${this.baseURL}/api/${this.apiVersion}/readers`;
     
-    // Fallback endpoints (direct service ports)
-    this.directUsersURL = `${baseURL}:${this.usersPort}`;
-    this.directThingsURL = `${baseURL}:${this.thingsPort}`;
-    this.directChannelsURL = `${baseURL}:${this.channelsPort}`;
-    this.directHttpURL = `${baseURL}:${this.httpPort}`;
-    this.directReadersURL = `${baseURL}:${this.readerPort}`;
-    this.directBootstrapURL = `${baseURL}:${this.bootstrapPort}`;
-    this.directConsumersURL = `${baseURL}:${this.consumersPort}`;
-    this.directProvisionURL = `${baseURL}:${this.provisionPort}`;
-    this.directRulesURL = `${baseURL}:${this.rulesPort}`;
-    this.directReportsURL = `${baseURL}:${this.reportsPort}`;
+    // Legacy proxy endpoints for fallback
+    this.legacyUsersURL = `${this.baseURL}/users`;
+    this.legacyThingsURL = `${this.baseURL}/things`;
+    this.legacyChannelsURL = `${this.baseURL}/channels`;
+    this.legacyHttpURL = `${this.baseURL}/http`;
+    this.legacyReadersURL = `${this.baseURL}/readers`;
     
-    // Authentication state
-    this.token = localStorage.getItem('magistrala_token');
-    this.refreshToken = localStorage.getItem('magistrala_refresh_token');
-    this.tokenExpiry = localStorage.getItem('magistrala_token_expiry');
+    // Direct service URLs (for fallback when proxy fails)
+    this.directThingsURL = `${this.backendURL || baseURL}:9006`;
+    this.directChannelsURL = `${this.backendURL || baseURL}:9005`;
+    this.directUsersURL = `${this.backendURL || baseURL}:9002`;
+    
+    // Authentication state - these will be dynamic getters
+    this._initializeAuthState();
     
     // Track working endpoints for optimization
     this.workingEndpoints = JSON.parse(localStorage.getItem('magistrala_working_endpoints') || '{}');
     
-    // Auto-refresh token if needed
-    this.setupTokenRefresh();
+    // Auto-refresh token if needed (skip for demo mode)
+    if (!this.isDemoMode) {
+      this.setupTokenRefresh();
+    }
+    
+    if (this.debugMode) {
+      console.log('🔧 MagistralaAPI initialized with working endpoints');
+      console.log('🔧 Base URL:', this.baseURL);
+      console.log('🔧 Things URL:', this.thingsURL);
+      console.log('🔧 Backend URL:', this.backendURL);
+    }
+  }
+
+  // Initialize authentication state with dynamic getters
+  _initializeAuthState() {
+    // Define dynamic getters for authentication properties
+    Object.defineProperty(this, 'token', {
+      get: () => localStorage.getItem('magistrala_token'),
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'refreshToken', {
+      get: () => localStorage.getItem('magistrala_refresh_token'),
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'tokenExpiry', {
+      get: () => localStorage.getItem('magistrala_token_expiry'),
+      enumerable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(this, 'isDemoMode', {
+      get: () => {
+        const token = localStorage.getItem('magistrala_token');
+        return token?.includes('demo_token') || false;
+      },
+      enumerable: true,
+      configurable: true
+    });
+  }
+
+  // Get current user ID for storage scoping
+  getUserId() {
+    // Try to get user ID from stored user data
+    const userData = localStorage.getItem('magistrala_user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        return user.id || user.email || user.identity;
+      } catch (error) {
+        // Fall through to token-based ID
+      }
+    }
+    
+    // Fallback to generating ID from token
+    const token = this.token;
+    if (token) {
+      // For demo tokens, use demo user ID
+      if (token.includes('demo_token')) {
+        return 'demo_user';
+      }
+      
+      // For real tokens, generate a consistent ID
+      return btoa(token.substring(0, 20)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 10);
+    }
+    
+    // Default to anonymous user
+    return 'anonymous';
   }
   
   // Token management and automatic refresh
@@ -108,224 +175,306 @@ class MagistralaAPI {
   }
   
   setTokens(accessToken, refreshToken, expiresIn) {
-    this.token = accessToken;
-    this.refreshToken = refreshToken;
-    
     // Calculate expiry time
     const expiryTime = new Date(Date.now() + (expiresIn || 3600) * 1000);
-    this.tokenExpiry = expiryTime.toISOString();
+    const tokenExpiry = expiryTime.toISOString();
     
-    // Store in localStorage
+    // Store in localStorage (which will be read by our dynamic getters)
     localStorage.setItem('magistrala_token', accessToken);
     localStorage.setItem('magistrala_refresh_token', refreshToken);
-    localStorage.setItem('magistrala_token_expiry', this.tokenExpiry);
+    localStorage.setItem('magistrala_token_expiry', tokenExpiry);
     
     // Setup next refresh
     this.setupTokenRefresh();
   }
   
   clearTokens() {
-    this.token = null;
-    this.refreshToken = null;
-    this.tokenExpiry = null;
+    // Clear localStorage (which will be read by our dynamic getters)
     localStorage.removeItem('magistrala_token');
     localStorage.removeItem('magistrala_refresh_token');
     localStorage.removeItem('magistrala_token_expiry');
   }
 
-  // Enhanced Authentication with proper Magistrala JWT integration
-  async login(email, password, domainId = null) {
-    console.log('🔑 Starting Magistrala authentication...');
-    
-    // PRIORITY 1: Check demo users created via signup FIRST (instant response)
-    const demoUsers = JSON.parse(localStorage.getItem('demo_users') || '[]');
-    const foundUser = demoUsers.find(user => user.email === email && user.password === password);
-    
-    if (foundUser) {
-      console.log('🎭 Found user in demo storage - instant login!');
-      const mockToken = 'demo_token_' + Date.now();
-      
-      const cleanUser = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: foundUser.role,
-        created_at: foundUser.created_at
-      };
-      
-      this.token = mockToken;
-      localStorage.setItem('magistrala_token', mockToken);
-      localStorage.setItem('magistrala_user', JSON.stringify(cleanUser));
-      
-      return {
-        token: mockToken,
-        user: cleanUser,
-        success: true,
-        endpoint: 'demo_signup'
-      };
-    }
-    
-    // PRIORITY 2: Check hardcoded demo credentials (instant response)
-    if (email === 'admin@choovio.com' && password === 'admin123') {
-      console.log('🎭 Using demo admin - instant login!');
-      const mockToken = 'demo_token_' + Date.now();
-      const userData = {
-        id: 'user-001',
-        name: 'Admin User',
-        email: 'admin@choovio.com',
-        role: 'Administrator'
-      };
-      
-      this.token = mockToken;
-      localStorage.setItem('magistrala_token', mockToken);
-      localStorage.setItem('magistrala_user', JSON.stringify(userData));
-      
-      return {
-        token: mockToken,
-        user: userData,
-        success: true,
-        endpoint: 'demo'
-      };
-    }
-    
-    // PRIORITY 3: Try Magistrala API endpoints with proper JWT authentication
-    console.log('🌐 Attempting Magistrala JWT authentication...');
-    
-    const endpoints = [
-      { url: `${this.usersURL}/tokens/issue`, type: 'proxy' },
-      { url: `${this.directUsersURL}/tokens/issue`, type: 'direct' }
-    ];
-    
-    const requestBody = {
-      identity: email,
-      secret: password
+  // Enhanced API request method with working endpoint discovery
+  async apiRequest(service, endpoint, method = 'GET', body = null, requiresAuth = false) {
+    const endpointMap = {
+      'users': [this.usersURL, this.legacyUsersURL],
+      'things': [this.thingsURL, this.legacyThingsURL], 
+      'channels': [this.channelsURL, this.legacyChannelsURL],
+      'http': [this.httpURL, this.legacyHttpURL],
+      'readers': [this.readersURL, this.legacyReadersURL]
     };
     
-    // Add domain_id if provided (for multi-tenant setup)
-    if (domainId) {
-      requestBody.domain_id = domainId;
+    const urls = endpointMap[service] || [this.baseURL];
+    
+    for (const baseUrl of urls) {
+      try {
+        const url = `${baseUrl}${endpoint}`;
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+        
+        if (requiresAuth && this.token) {
+          headers['Authorization'] = `Bearer ${this.token}`;
+        }
+        
+        const config = {
+          method,
+          headers,
+          signal: AbortSignal.timeout(Math.min(this.apiTimeout, 3000)) // Max 3 seconds for any API call
+        };
+        
+        if (body && method !== 'GET') {
+          config.body = JSON.stringify(body);
+        }
+        
+        if (this.debugMode) {
+          console.log(`🔗 API Request: ${method} ${url}`);
+        }
+        
+        const response = await fetch(url, config);
+        
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            
+            if (this.debugMode) {
+              console.log(`✅ API Success: ${method} ${url} -> ${response.status}`);
+            }
+            
+            return {
+              success: true,
+              data,
+              status: response.status,
+              endpoint: url
+            };
+          } else {
+            // Non-JSON response (likely an error page)
+            const text = await response.text();
+            if (this.debugMode) {
+              console.log(`❌ Non-JSON response from ${url}: ${text.substring(0, 100)}...`);
+            }
+            continue;
+          }
+        } else if (response.status === 401 && this.refreshToken) {
+          // Try to refresh token and retry
+          await this.refreshAccessToken();
+          // Retry with new token
+          headers['Authorization'] = `Bearer ${this.token}`;
+          const retryResponse = await fetch(url, { ...config, headers });
+          
+          if (retryResponse.ok) {
+            const data = await retryResponse.json();
+            return {
+              success: true,
+              data,
+              status: retryResponse.status,
+              endpoint: url
+            };
+          }
+        }
+        
+        // If we get here, the response was not ok
+        const errorData = await response.text();
+        if (this.debugMode) {
+          console.log(`⚠️ API Error: ${method} ${url} -> ${response.status}: ${errorData}`);
+        }
+        
+        // Don't throw error, try next endpoint
+        continue;
+        
+      } catch (error) {
+        if (this.debugMode) {
+          console.log(`❌ API Request Failed: ${error.message}`);
+        }
+        // Try next endpoint
+        continue;
+      }
     }
     
-    for (const endpoint of endpoints) {
+    // All endpoints failed
+    return {
+      success: false,
+      error: `All ${service} endpoints failed`,
+      status: 0
+    };
+  }
+
+  // Health check and connection validation
+  async validateConnection() {
+    console.log('🔍 Testing Magistrala connection...');
+    
+    const healthEndpoints = [
+      { url: `${this.baseURL}/health`, type: 'proxy' },
+      { url: `${this.baseURL}:9002/health`, type: 'users_direct' },
+      { url: `${this.baseURL}:9000/health`, type: 'things_direct' }
+    ];
+    
+    const results = {
+      accessible: false,
+      workingEndpoints: [],
+      errors: [],
+      recommendations: []
+    };
+    
+    for (const endpoint of healthEndpoints) {
       try {
-        console.log(`🔐 Trying Magistrala ${endpoint.type}: ${endpoint.url}`);
-        
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for real API
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         
         const response = await fetch(endpoint.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
+          signal: controller.signal,
+          method: 'GET'
         });
         
         clearTimeout(timeoutId);
         
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Store tokens properly
-          this.setTokens(
-            data.access_token, 
-            data.refresh_token, 
-            data.expires_in || 3600
-          );
-          
-          // Store working endpoint for future use
-          this.workingEndpoints.users = endpoint.type;
-          localStorage.setItem('magistrala_working_endpoints', JSON.stringify(this.workingEndpoints));
-          
-          // Get user profile information
-          const userData = await this.getUserInfo();
-          
-          console.log(`✅ Magistrala authentication successful via ${endpoint.type}`);
-          return {
-            token: data.access_token,
-            refresh_token: data.refresh_token,
-            user: userData,
-            success: true,
-            endpoint: endpoint.type,
-            expires_in: data.expires_in
-          };
+        if (response.ok || response.status === 404) { // 404 is OK if health endpoint doesn't exist
+          results.accessible = true;
+          results.workingEndpoints.push(endpoint);
+          console.log(`✅ ${endpoint.type} accessible: ${endpoint.url}`);
         } else {
-          const errorData = await response.text();
-          console.log(`❌ ${endpoint.type} failed: ${response.status} - ${errorData}`);
+          results.errors.push(`${endpoint.type}: HTTP ${response.status}`);
+          console.log(`⚠️ ${endpoint.type} returned: ${response.status}`);
         }
-      } catch (fetchError) {
-        if (fetchError.name === 'AbortError') {
-          console.log(`⏰ ${endpoint.type} timeout after 5s`);
-        } else {
-          console.log(`🔌 ${endpoint.type} error: ${fetchError.message}`);
-        }
+      } catch (error) {
+        results.errors.push(`${endpoint.type}: ${error.message}`);
+        console.log(`❌ ${endpoint.type} failed: ${error.message}`);
       }
     }
     
-    throw new Error('Authentication failed. Please check credentials, network connection, or use demo: admin@choovio.com/admin123');
+    // Generate recommendations based on results
+    if (!results.accessible) {
+      results.recommendations.push('1. Check if Magistrala services are running');
+      results.recommendations.push('2. Verify the base URL configuration');
+      results.recommendations.push('3. Check network connectivity');
+      results.recommendations.push('4. Ensure CORS is configured properly');
+    } else if (results.workingEndpoints.length < healthEndpoints.length) {
+      results.recommendations.push('Some endpoints are not accessible - check individual service status');
+    }
+    
+    return results;
+  }
+
+  // Enhanced debug logging
+  debugLog(message, data = null) {
+    if (this.debugMode) {
+      console.log(`🔍 [DEBUG] ${message}`, data || '');
+    }
+  }
+
+  // Enhanced Magistrala/SuperMQ Authentication using AuthService
+  async login(email, password, domainId = null) {
+    console.log('🔑 Starting enhanced Magistrala/SuperMQ authentication...');
+    
+    // Import authService dynamically to avoid circular dependencies
+    const authService = (await import('./authService')).default;
+    
+    try {
+      // Use the enhanced authentication service
+      const result = await authService.quickAuthenticate(email, password, domainId);
+      
+      if (result.success) {
+        // Store tokens using the existing token management
+        this.setTokens(
+          result.access_token,
+          result.refresh_token,
+          result.data.expires_in || 86400
+        );
+        
+        // Store working endpoint information
+        this.workingEndpoints.auth = result.endpoint;
+        
+        // Get or create user profile information
+        let userData = result.user;
+        if (!result.demo) {
+          try {
+            userData = await this.getUserInfo();
+          } catch (error) {
+            console.log('Using provided user data as profile fetch failed');
+            userData = result.user;
+          }
+        }
+        
+        console.log(`✅ Enhanced authentication successful via ${result.endpoint}`);
+        return {
+          token: result.access_token,
+          refresh_token: result.refresh_token,
+          user: userData,
+          success: true,
+          endpoint: result.endpoint,
+          expires_in: result.data.expires_in || 86400,
+          demo: result.demo || false
+        };
+      }
+    } catch (error) {
+      console.error('Enhanced authentication failed:', error);
+    }
+    
+    throw new Error('Authentication failed. Please check your credentials and ensure your Magistrala instance is running and accessible.');
   }
 
   async createUser(user) {
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
+    }
+
     try {
-      // Simulate user creation for demo
-      const mockUser = {
-        id: 'user-' + Date.now(),
+      const endpoints = [
+        { url: `${this.usersURL}`, type: 'proxy' },
+        { url: `${this.directUsersURL}/users`, type: 'direct' }
+      ];
+      
+      const userData = {
         name: user.name,
-        email: user.email,
-        role: user.role || 'User',
-        created_at: new Date().toISOString(),
-        success: true
+        credentials: {
+          identity: user.email,
+          secret: user.password
+        },
+        role: user.role || 'user',
+        metadata: user.metadata || {}
       };
       
-      // Store in localStorage for demo (including password for auth)
-      const userWithCredentials = {
-        ...mockUser,
-        password: user.password // In production, this would be hashed
-      };
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint.url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`✅ User created via ${endpoint.type}`);
+            return {
+              id: result.id,
+              name: result.name,
+              email: result.credentials?.identity,
+              role: result.role,
+              created_at: result.created_at,
+              success: true
+            };
+          }
+        } catch (error) {
+          console.log(`🔌 Create user ${endpoint.type} error: ${error.message}`);
+        }
+      }
       
-      const existingUsers = JSON.parse(localStorage.getItem('demo_users') || '[]');
-      existingUsers.push(userWithCredentials);
-      localStorage.setItem('demo_users', JSON.stringify(existingUsers));
-      
-      return mockUser;
+      throw new Error('All user creation endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create user error:', error);
-      
-      // Fallback for demo/development
-      const mockUser = {
-        id: 'user-' + Date.now(),
-        name: user.name,
-        email: user.email,
-        role: user.role || 'User',
-        created_at: new Date().toISOString(),
-        success: true
-      };
-      
-      return mockUser;
+      throw error;
     }
   }
 
   async getUserInfo() {
     try {
-      // Return cached user data if available and token is valid
-      const savedUser = localStorage.getItem('magistrala_user');
-      if (savedUser && this.token && !this.token.startsWith('demo_token_')) {
-        return JSON.parse(savedUser);
-      }
-      
-      // For demo tokens, return saved user or default
-      if (this.token && this.token.startsWith('demo_token_')) {
-        if (savedUser) {
-          return JSON.parse(savedUser);
-        }
-        return {
-          id: 'demo-user',
-          name: 'Demo User',
-          email: 'demo@choovio.com',
-          role: 'User'
-        };
-      }
+      // Try to get user profile from Magistrala API
       
       // Try to get user profile from Magistrala API
       if (!this.token) {
@@ -350,7 +499,6 @@ class MagistralaAPI {
             const userData = await response.json();
             
             // Store user data for future use
-            localStorage.setItem('magistrala_user', JSON.stringify(userData));
             
             console.log(`✅ User profile retrieved via ${endpoint.type}`);
             return userData;
@@ -368,7 +516,7 @@ class MagistralaAPI {
               
               if (retryResponse.ok) {
                 const userData = await retryResponse.json();
-                localStorage.setItem('magistrala_user', JSON.stringify(userData));
+                // User data retrieved
                 return userData;
               }
             }
@@ -400,108 +548,180 @@ class MagistralaAPI {
   logout() {
     // Clear all authentication data
     this.clearTokens();
-    localStorage.removeItem('magistrala_user');
-    localStorage.removeItem('magistrala_working_endpoints');
+    // Clear user session data
     console.log('💫 User logged out successfully');
   }
 
-  // Things Management (Devices/Clients) with proper Magistrala API integration
+  // Things Management (Devices/Clients) with enhanced API integration
   async getDevices(offset = 0, limit = 100) {
-    // For demo/development, return mock data immediately for better UX
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock devices for demo account');
-      return this.getMockDevices();
-    }
-
-    if (!this.token) {
-      console.log('🔒 No authentication token, using mock data');
-      return this.getMockDevices();
-    }
-
     try {
-      console.log('🔍 Fetching things from Magistrala API...');
-      
-      const endpoints = [
-        { url: `${this.thingsURL}?offset=${offset}&limit=${limit}`, type: 'proxy' },
-        { url: `${this.directThingsURL}/things?offset=${offset}&limit=${limit}`, type: 'direct' }
-      ];
-      
-      // Try preferred endpoint first (based on previous success)
-      const preferredType = this.workingEndpoints.things || 'proxy';
-      const sortedEndpoints = endpoints.sort((a, b) => 
-        a.type === preferredType ? -1 : b.type === preferredType ? 1 : 0
-      );
-      
-      for (const endpoint of sortedEndpoints) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-          
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json',
-            },
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Store working endpoint
-            this.workingEndpoints.things = endpoint.type;
-            localStorage.setItem('magistrala_working_endpoints', JSON.stringify(this.workingEndpoints));
-            
-            console.log(`✅ Successfully fetched ${data.things?.length || 0} things via ${endpoint.type}`);
-            
-            // Transform Magistrala things to our device format
-            const devices = {
-              clients: (data.things || []).map(thing => ({
-                id: thing.id,
-                name: thing.name || 'Unnamed Device',
-                status: this.getThingStatus(thing),
-                metadata: {
-                  ...thing.metadata,
-                  secret: thing.credentials?.secret, // Store secret for messaging
-                  created_at: thing.created_at,
-                  updated_at: thing.updated_at
-                },
-                secret: thing.credentials?.secret
-              })),
-              total: data.total || 0,
-              offset: data.offset || offset,
-              limit: data.limit || limit
-            };
-            
-            return devices;
-          } else if (response.status === 401) {
-            // Token expired, try to refresh
-            await this.refreshAccessToken();
-            if (this.token) {
-              continue; // Retry with refreshed token
-            }
-          } else {
-            console.log(`❌ Things ${endpoint.type} failed: ${response.status}`);
-          }
-        } catch (fetchError) {
-          if (fetchError.name === 'AbortError') {
-            console.log(`⏰ Things ${endpoint.type} timeout`);
-          } else {
-            console.log(`🔌 Things ${endpoint.type} error: ${fetchError.message}`);
-          }
-        }
+      if (this.debugMode) {
+        console.log('🔍 Fetching devices/things from Magistrala API...');
       }
       
-      console.log('📦 All Things API endpoints failed, using mock data');
-      return this.getMockDevices();
+      const result = await this.apiRequest('things', `?offset=${offset}&limit=${limit}`, 'GET', null, true);
+      
+      if (result.success) {
+        // Transform the data to match expected format
+        const devices = (result.data.things || result.data || []).map(thing => ({
+          id: thing.id,
+          name: thing.name || 'Unnamed Device',
+          secret: thing.secret || thing.credentials?.secret,
+          status: this.inferDeviceStatus(thing),
+          type: thing.metadata?.type || 'device',
+          protocol: thing.metadata?.protocol || 'unknown',
+          location: thing.metadata?.location || 'Unknown',
+          created_at: thing.created_at,
+          updated_at: thing.updated_at,
+          metadata: thing.metadata || {},
+          // LoRaWAN specific fields
+          devEUI: thing.metadata?.devEUI,
+          appEUI: thing.metadata?.appEUI,
+          appKey: thing.metadata?.appKey,
+          spreading_factor: thing.metadata?.spreading_factor,
+          frequency: thing.metadata?.frequency
+        }));
+        
+        // Save to persistent storage for offline access
+        const userId = this.getUserId();
+        dataStorage.saveDevices(devices, userId);
+        
+        if (this.debugMode) {
+          console.log(`✅ Successfully fetched ${devices.length} devices (saved to storage)`);
+        }
+        
+        return {
+          things: devices,
+          total: result.data.total || devices.length,
+          offset: offset,
+          limit: limit
+        };
+      } else {
+        // Try to load from persistent storage first
+        const userId = this.getUserId();
+        const storedDevices = dataStorage.getDevices(userId);
+        
+        if (storedDevices && storedDevices.length > 0) {
+          console.log(`💾 Using stored devices (${storedDevices.length} found)`);
+          const paginatedDevices = storedDevices.slice(offset, offset + limit);
+          return {
+            things: paginatedDevices,
+            total: storedDevices.length,
+            offset: offset,
+            limit: limit,
+            source: 'local_storage'
+          };
+        }
+        
+        // Final fallback to demo data
+        console.log('📱 Using demo devices (API and storage unavailable)');
+        return this.getDemoDevices(offset, limit);
+      }
     } catch (error) {
-      console.error('Get devices error:', error);
-      return this.getMockDevices();
+      console.error('Error fetching devices:', error);
+      
+      // Try persistent storage on error
+      const userId = this.getUserId();
+      const storedDevices = dataStorage.getDevices(userId);
+      
+      if (storedDevices && storedDevices.length > 0) {
+        console.log(`💾 Using stored devices after error (${storedDevices.length} found)`);
+        const paginatedDevices = storedDevices.slice(offset, offset + limit);
+        return {
+          things: paginatedDevices,
+          total: storedDevices.length,
+          offset: offset,
+          limit: limit,
+          source: 'local_storage'
+        };
+      }
+      
+      return this.getDemoDevices(offset, limit);
     }
   }
-  
+
+  getDemoDevices(offset = 0, limit = 100) {
+    const demoDevices = [
+      {
+        id: 'demo-device-001',
+        name: 'LoRaWAN Temperature Sensor #1',
+        secret: 'demo-secret-001',
+        status: 'online',
+        type: 'sensor',
+        protocol: 'lorawan',
+        location: 'Building A - Floor 1',
+        created_at: new Date('2024-01-15').toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata: {
+          type: 'temperature_sensor',
+          protocol: 'lorawan',
+          location: 'Building A - Floor 1'
+        },
+        devEUI: '1234567890ABCDEF',
+        appEUI: 'FEDCBA0987654321',
+        spreading_factor: 7,
+        frequency: 868100000
+      },
+      {
+        id: 'demo-device-002', 
+        name: 'LoRaWAN Gateway #1',
+        secret: 'demo-secret-002',
+        status: 'online',
+        type: 'gateway',
+        protocol: 'lorawan',
+        location: 'Building B - Roof',
+        created_at: new Date('2024-01-20').toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata: {
+          type: 'gateway',
+          protocol: 'lorawan',
+          location: 'Building B - Roof'
+        }
+      },
+      {
+        id: 'demo-device-003',
+        name: 'Motion Detector #1', 
+        secret: 'demo-secret-003',
+        status: 'offline',
+        type: 'sensor',
+        protocol: 'lorawan',
+        location: 'Parking Lot',
+        created_at: new Date('2024-02-01').toISOString(),
+        updated_at: new Date(Date.now() - 86400000).toISOString(),
+        metadata: {
+          type: 'motion_sensor',
+          protocol: 'lorawan',
+          location: 'Parking Lot'
+        },
+        devEUI: 'ABCDEF1234567890',
+        spreading_factor: 9
+      }
+    ];
+    
+    const start = offset;
+    const end = Math.min(offset + limit, demoDevices.length);
+    const paginatedDevices = demoDevices.slice(start, end);
+    
+    return {
+      things: paginatedDevices,
+      total: demoDevices.length,
+      offset,
+      limit
+    };
+  }
+
+  inferDeviceStatus(thing) {
+    if (!thing.updated_at) return 'unknown';
+    
+    const lastUpdate = new Date(thing.updated_at);
+    const now = new Date();
+    const diffMinutes = (now - lastUpdate) / (1000 * 60);
+    
+    if (diffMinutes < 5) return 'online';
+    if (diffMinutes < 60) return 'idle'; 
+    return 'offline';
+  }
+
   // Helper method to determine thing status
   getThingStatus(thing) {
     // Magistrala doesn't have explicit status, infer from metadata or timestamps
@@ -522,23 +742,48 @@ class MagistralaAPI {
 
   async createDevice(device) {
     console.log('🔧 Creating device:', device);
+    console.log('🔧 Current token:', this.token ? `${this.token.substring(0, 20)}...` : 'No token');
+    console.log('🔧 Is demo mode:', this.isDemoMode);
     
-    // For demo accounts, simulate device creation and add to local storage
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Creating mock device for demo account');
-      const mockDevice = this.createMockDevice(device);
-      this.addDeviceToLocalStorage(mockDevice);
-      return mockDevice;
-    }
-
     if (!this.token) {
-      console.log('🔒 No authentication token, creating mock device');
-      const mockDevice = this.createMockDevice(device);
-      this.addDeviceToLocalStorage(mockDevice);
-      return mockDevice;
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
+      // Quick check: if we're in demo mode, skip API calls entirely
+      if (this.isDemoMode) {
+        console.log('🧪 Demo mode detected, creating demo device directly...');
+        const demoDevice = {
+          id: `demo_thing_${Date.now()}`,
+          name: device.name,
+          status: 'online',
+          type: device.type || 'device',
+          protocol: device.protocol || 'http',
+          location: device.location || 'Unknown',
+          metadata: {
+            type: device.type || 'sensor',
+            location: device.location,
+            protocol: device.protocol || 'mqtt',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ...(device.devEUI && { devEUI: device.devEUI }),
+            ...(device.appEUI && { appEUI: device.appEUI }),
+            ...(device.frequency && { frequency: device.frequency }),
+            ...(device.spreadingFactor && { spreadingFactor: device.spreadingFactor }),
+            ...device.metadata
+          },
+          secret: `demo_secret_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+        
+        // Save demo device to persistent storage
+        const userId = this.getUserId();
+        dataStorage.addDevice(demoDevice, userId);
+        
+        console.log('✅ Demo device created instantly:', demoDevice.id);
+        return demoDevice;
+      }
+      
       console.log('🔧 Creating thing in Magistrala...');
       
       const endpoints = [
@@ -578,6 +823,7 @@ class MagistralaAPI {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(thingData),
+            signal: AbortSignal.timeout(2000) // 2 second timeout for device creation
           });
           
           if (response.ok) {
@@ -586,14 +832,23 @@ class MagistralaAPI {
             console.log(`✅ Thing created successfully via ${endpoint.type}: ${createdThing.id}`);
             
             // Transform response to our format
-            return {
+            const newDevice = {
               id: createdThing.id,
               name: createdThing.name,
               status: 'online',
+              type: device.type || 'device',
+              protocol: device.protocol || 'http',
+              location: device.location || 'Unknown',
               metadata: createdThing.metadata,
               secret: createdThing.credentials?.secret,
               created_at: createdThing.created_at
             };
+            
+            // Save to persistent storage
+            const userId = this.getUserId();
+            dataStorage.addDevice(newDevice, userId);
+            
+            return newDevice;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
             continue; // Retry with refreshed token
@@ -606,31 +861,96 @@ class MagistralaAPI {
         }
       }
       
-      console.log('📦 All create thing endpoints failed, creating mock device');
-      const mockDevice = this.createMockDevice(device);
-      this.addDeviceToLocalStorage(mockDevice);
-      return mockDevice;
+      // Demo mode fallback for device creation
+      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
+        console.log('🧪 Real Things API failed, creating demo device...');
+        
+        const demoDevice = {
+          id: `demo_thing_${Date.now()}`,
+          name: device.name,
+          status: 'online',
+          metadata: {
+            type: device.type || 'sensor',
+            location: device.location,
+            protocol: device.protocol || 'mqtt',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ...(device.devEUI && { devEUI: device.devEUI }),
+            ...(device.appEUI && { appEUI: device.appEUI }),
+            ...(device.frequency && { frequency: device.frequency }),
+            ...(device.spreadingFactor && { spreadingFactor: device.spreadingFactor }),
+            ...device.metadata
+          },
+          secret: `demo_secret_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+        
+        // Save demo device to persistent storage too
+        const userId = this.getUserId();
+        dataStorage.addDevice(demoDevice, userId);
+        
+        console.log('✅ Demo device created successfully and saved to storage:', demoDevice.id);
+        return demoDevice;
+      }
+      
+      throw new Error('All create thing endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create device error:', error);
-      const mockDevice = this.createMockDevice(device);
-      this.addDeviceToLocalStorage(mockDevice);
-      return mockDevice;
+      
+      // Final fallback to demo creation if everything fails
+      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
+        console.log('🧪 Fallback to demo device creation...');
+        return {
+          id: `demo_thing_${Date.now()}`,
+          name: device.name,
+          status: 'online',
+          metadata: {
+            type: device.type || 'sensor',
+            location: device.location,
+            protocol: device.protocol || 'mqtt',
+            created_at: new Date().toISOString(),
+            ...device.metadata
+          },
+          secret: `demo_secret_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+      }
+      
+      throw error;
     }
   }
 
   async updateDevice(deviceId, updates) {
-    // For demo accounts, simulate update success
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Simulating device update for demo account:', deviceId, updates);
-      return this.updateMockDevice(deviceId, updates);
-    }
-
     if (!this.token) {
-      console.log('🔒 No authentication token, simulating update');
-      return this.updateMockDevice(deviceId, updates);
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
+      // Quick check: if we're in demo mode, update instantly
+      if (this.isDemoMode) {
+        console.log(`🧪 Demo mode detected, updating device ${deviceId} instantly...`);
+        
+        const userId = this.getUserId();
+        const devices = dataStorage.getDevices(userId);
+        const deviceIndex = devices.findIndex(d => d.id === deviceId);
+        
+        if (deviceIndex >= 0) {
+          const updatedDevice = {
+            ...devices[deviceIndex],
+            ...updates,
+            updated_at: new Date().toISOString()
+          };
+          
+          devices[deviceIndex] = updatedDevice;
+          dataStorage.saveDevices(devices, userId);
+          
+          console.log(`✅ Demo device updated instantly: ${deviceId}`);
+          return updatedDevice;
+        } else {
+          throw new Error('Device not found in storage');
+        }
+      }
+      
       console.log(`🔧 Updating thing ${deviceId} in Magistrala...`);
       
       const endpoints = [
@@ -653,6 +973,7 @@ class MagistralaAPI {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(updateData),
+            signal: AbortSignal.timeout(2000) // 2 second timeout for updates
           });
           
           if (response.ok) {
@@ -660,13 +981,22 @@ class MagistralaAPI {
             
             console.log(`✅ Thing updated successfully via ${endpoint.type}`);
             
-            return {
+            const result = {
               id: updatedThing.id,
               name: updatedThing.name,
               status: this.getThingStatus(updatedThing),
+              type: updates.type || 'device',
+              protocol: updates.protocol || 'http',
+              location: updates.location || 'Unknown',
               metadata: updatedThing.metadata,
               updated_at: updatedThing.updated_at
             };
+            
+            // Update persistent storage
+            const userId = this.getUserId();
+            dataStorage.addDevice(result, userId);
+            
+            return result;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
             continue; // Retry with refreshed token
@@ -679,27 +1009,34 @@ class MagistralaAPI {
         }
       }
       
-      console.log('📦 All update thing endpoints failed, using mock update');
-      return this.updateMockDevice(deviceId, updates);
+      throw new Error('All update thing endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Update device error:', error);
-      return this.updateMockDevice(deviceId, updates);
+      throw error;
     }
   }
 
   async deleteDevice(deviceId) {
-    // For demo accounts, simulate delete success
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Simulating device delete for demo account:', deviceId);
-      return this.deleteMockDevice(deviceId);
-    }
-
     if (!this.token) {
-      console.log('🔒 No authentication token, simulating delete');
-      return this.deleteMockDevice(deviceId);
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
+      // Quick check: if we're in demo mode, delete instantly from storage
+      if (this.isDemoMode) {
+        console.log(`🧪 Demo mode detected, deleting device ${deviceId} instantly...`);
+        
+        const userId = this.getUserId();
+        const success = dataStorage.deleteDevice(deviceId, userId);
+        
+        if (success) {
+          console.log(`✅ Demo device deleted instantly: ${deviceId}`);
+          return true;
+        } else {
+          throw new Error('Device not found in storage');
+        }
+      }
+      
       console.log(`🖺 Deleting thing ${deviceId} from Magistrala...`);
       
       const endpoints = [
@@ -714,10 +1051,14 @@ class MagistralaAPI {
             headers: {
               'Authorization': `Bearer ${this.token}`,
             },
+            signal: AbortSignal.timeout(2000) // 2 second timeout for deletes
           });
           
           if (response.ok) {
             console.log(`✅ Thing deleted successfully via ${endpoint.type}`);
+            // Also remove from storage
+            const userId = this.getUserId();
+            dataStorage.deleteDevice(deviceId, userId);
             return true;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
@@ -734,25 +1075,17 @@ class MagistralaAPI {
         }
       }
       
-      console.log('📦 All delete thing endpoints failed, using mock delete');
-      return this.deleteMockDevice(deviceId);
+      throw new Error('All delete thing endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Delete device error:', error);
-      return this.deleteMockDevice(deviceId);
+      throw error;
     }
   }
 
   // Channels Management with proper Magistrala API integration
   async getChannels(offset = 0, limit = 100) {
-    // For demo accounts, return mock data immediately
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock channels for demo account');
-      return this.getMockChannels();
-    }
-
     if (!this.token) {
-      console.log('🔒 No authentication token, using mock data');
-      return this.getMockChannels();
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -789,13 +1122,11 @@ class MagistralaAPI {
             
             // Store working endpoint
             this.workingEndpoints.channels = endpoint.type;
-            localStorage.setItem('magistrala_working_endpoints', JSON.stringify(this.workingEndpoints));
             
             console.log(`✅ Successfully fetched ${data.channels?.length || 0} channels via ${endpoint.type}`);
             
             // Transform to our expected format
-            return {
-              channels: (data.channels || []).map(channel => ({
+            const transformedChannels = (data.channels || []).map(channel => ({
                 id: channel.id,
                 name: channel.name || 'Unnamed Channel',
                 description: channel.description || channel.metadata?.description || '',
@@ -809,7 +1140,14 @@ class MagistralaAPI {
                 connectedDevices: Math.floor(Math.random() * 20), // TODO: Get actual connections
                 messagesTotal: Math.floor(Math.random() * 1000 + 100),
                 lastActivity: channel.updated_at || channel.created_at || new Date().toISOString()
-              })),
+              }));
+            
+            // Save channels to persistent storage
+            const userId = this.getUserId();
+            dataStorage.saveChannels(transformedChannels, userId);
+            
+            return {
+              channels: transformedChannels,
               total: data.total || 0,
               offset: data.offset || offset,
               limit: data.limit || limit
@@ -829,11 +1167,84 @@ class MagistralaAPI {
         }
       }
       
-      console.log('📦 All Channels API endpoints failed, using mock data');
-      return this.getMockChannels();
+      // If API fails, try to load from localStorage first
+      const userId = this.getUserId();
+      const storedChannels = dataStorage.getChannels(userId);
+      
+      if (storedChannels && storedChannels.length > 0) {
+        console.log(`📦 Loading ${storedChannels.length} channels from localStorage`);
+        return {
+          channels: storedChannels,
+          total: storedChannels.length,
+          offset: offset,
+          limit: limit
+        };
+      }
+
+      // Demo mode fallback for channels (also when API calls fail and authentication is disabled)
+      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
+        console.log('🧪 Real Channels API failed, generating demo data...');
+        
+        const demoChannels = [
+          {
+            id: 'ch_demo_001',
+            name: 'Temperature Sensors',
+            description: 'Channel for temperature sensor data collection',
+            status: 'active',
+            protocol: 'mqtt',
+            topic: '/sensors/temperature',
+            metadata: { type: 'sensor', qos: 1, retained: true },
+            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+            connectedDevices: 12,
+            messagesTotal: 1547,
+            lastActivity: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+          },
+          {
+            id: 'ch_demo_002',
+            name: 'LoRaWAN Gateway',
+            description: 'LoRaWAN device uplink channel',
+            status: 'active',
+            protocol: 'lorawan',
+            topic: '/lorawan/uplink',
+            metadata: { spreadingFactor: 'SF7', frequency: '868MHz' },
+            created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+            connectedDevices: 8,
+            messagesTotal: 892,
+            lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+          },
+          {
+            id: 'ch_demo_003',
+            name: 'Actuator Control',
+            description: 'Commands channel for actuator devices',
+            status: 'active',
+            protocol: 'coap',
+            topic: '/actuators/commands',
+            metadata: { confirmable: true, maxRetransmit: 3 },
+            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+            connectedDevices: 5,
+            messagesTotal: 334,
+            lastActivity: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+          }
+        ];
+        
+        // Save demo channels to persistent storage
+        dataStorage.saveChannels(demoChannels, userId);
+        
+        return {
+          channels: demoChannels,
+          total: demoChannels.length,
+          offset: offset,
+          limit: limit
+        };
+      }
+      
+      throw new Error('All Channels API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get channels error:', error);
-      return this.getMockChannels();
+      throw error;
     }
   }
   
@@ -854,15 +1265,8 @@ class MagistralaAPI {
   }
 
   async createChannel(channel) {
-    // For demo accounts, simulate channel creation
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Creating mock channel for demo account');
-      return this.createMockChannel(channel);
-    }
-
     if (!this.token) {
-      console.log('🔒 No authentication token, creating mock channel');
-      return this.createMockChannel(channel);
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -900,7 +1304,7 @@ class MagistralaAPI {
             
             console.log(`✅ Channel created successfully via ${endpoint.type}: ${createdChannel.id}`);
             
-            return {
+            const result = {
               id: createdChannel.id,
               name: createdChannel.name,
               description: createdChannel.description,
@@ -913,6 +1317,12 @@ class MagistralaAPI {
               messagesTotal: 0,
               lastActivity: createdChannel.created_at
             };
+            
+            // Save created channel to persistent storage
+            const userId = this.getUserId();
+            dataStorage.addChannel(result, userId);
+            
+            return result;
           } else if (response.status === 401) {
             await this.refreshAccessToken();
             continue; // Retry with refreshed token
@@ -925,11 +1335,39 @@ class MagistralaAPI {
         }
       }
       
-      console.log('📦 All create channel endpoints failed, creating mock channel');
-      return this.createMockChannel(channel);
+      // If API fails and we're in demo mode, create demo channel
+      if (this.isDemoMode) {
+        console.log('🧪 Demo mode detected, creating demo channel directly...');
+        const demoChannel = {
+          id: `demo_channel_${Date.now()}`,
+          name: channel.name,
+          description: channel.description || '',
+          protocol: channel.protocol || 'mqtt',
+          topic: channel.topic || `/${channel.protocol || 'mqtt'}/${channel.name?.toLowerCase().replace(/\s+/g, '_') || 'data'}`,
+          status: 'active',
+          metadata: {
+            protocol: channel.protocol || 'mqtt',
+            description: channel.description,
+            ...channel.metadata
+          },
+          created_at: new Date().toISOString(),
+          connectedDevices: 0,
+          messagesTotal: 0,
+          lastActivity: new Date().toISOString()
+        };
+        
+        // Save demo channel to persistent storage
+        const userId = this.getUserId();
+        dataStorage.addChannel(demoChannel, userId);
+        
+        console.log('✅ Demo channel created instantly:', demoChannel.id);
+        return demoChannel;
+      }
+      
+      throw new Error('All create channel endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create channel error:', error);
-      return this.createMockChannel(channel);
+      throw error;
     }
   }
 
@@ -1031,15 +1469,8 @@ class MagistralaAPI {
   }
 
   async getMessages(channelId, offset = 0, limit = 100) {
-    // For demo accounts, return mock data immediately
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock messages for demo account');
-      return this.getMockMessages(channelId);
-    }
-
     if (!this.token) {
-      console.log('🔒 No authentication token, using mock data');
-      return this.getMockMessages(channelId);
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1092,11 +1523,10 @@ class MagistralaAPI {
         }
       }
       
-      console.log('📦 All Messages API endpoints failed, using mock data');
-      return this.getMockMessages(channelId);
+      throw new Error('All Messages API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get messages error:', error);
-      return this.getMockMessages(channelId);
+      throw error;
     }
   }
   
@@ -1163,9 +1593,8 @@ class MagistralaAPI {
   
   // 1. BOOTSTRAP SERVICE - Zero-touch device provisioning
   async getBootstrapConfigs(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock bootstrap configs for demo account');
-      return this.getMockBootstrapConfigs();
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1198,17 +1627,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.getMockBootstrapConfigs();
+      throw new Error('All Bootstrap API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get bootstrap configs error:', error);
-      return this.getMockBootstrapConfigs();
+      throw error;
     }
   }
   
   async createBootstrapConfig(config) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Creating mock bootstrap config');
-      return this.createMockBootstrapConfig(config);
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1249,16 +1677,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.createMockBootstrapConfig(config);
+      throw new Error('All Bootstrap create endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create bootstrap config error:', error);
-      return this.createMockBootstrapConfig(config);
+      throw error;
     }
   }
   
   async updateBootstrapConfig(configId, updates) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true, message: 'Mock bootstrap config updated' };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1296,9 +1724,8 @@ class MagistralaAPI {
   
   // 2. CONSUMERS SERVICE - Message processing and notifications
   async getSubscriptions(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock subscriptions for demo account');
-      return this.getMockSubscriptions();
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1331,17 +1758,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.getMockSubscriptions();
+      throw new Error('All Consumers API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get subscriptions error:', error);
-      return this.getMockSubscriptions();
+      throw error;
     }
   }
   
   async createSubscription(subscription) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Creating mock subscription');
-      return this.createMockSubscription(subscription);
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1378,16 +1804,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.createMockSubscription(subscription);
+      throw new Error('All Consumers create endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create subscription error:', error);
-      return this.createMockSubscription(subscription);
+      throw error;
     }
   }
   
   async deleteSubscription(subscriptionId) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true, message: 'Mock subscription deleted' };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1423,9 +1849,8 @@ class MagistralaAPI {
   
   // 3. PROVISION SERVICE - Bulk device provisioning
   async bulkProvision(provisionData) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Simulating bulk provision for demo account');
-      return this.simulateBulkProvision(provisionData);
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1457,18 +1882,17 @@ class MagistralaAPI {
         }
       }
       
-      return this.simulateBulkProvision(provisionData);
+      throw new Error('All Provision API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Bulk provision error:', error);
-      return this.simulateBulkProvision(provisionData);
+      throw error;
     }
   }
   
   // 4. RULES ENGINE SERVICE - Message processing and automation
   async getRules(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock rules for demo account');
-      return this.getMockRules();
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1501,17 +1925,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.getMockRules();
+      throw new Error('All Rules API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get rules error:', error);
-      return this.getMockRules();
+      throw error;
     }
   }
   
   async createRule(rule) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Creating mock rule');
-      return this.createMockRule(rule);
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1554,16 +1977,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.createMockRule(rule);
+      throw new Error('All Rules create endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create rule error:', error);
-      return this.createMockRule(rule);
+      throw error;
     }
   }
   
   async updateRule(ruleId, updates) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true, message: 'Mock rule updated' };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1604,8 +2027,8 @@ class MagistralaAPI {
   }
   
   async deleteRule(ruleId) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true, message: 'Mock rule deleted' };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1641,9 +2064,8 @@ class MagistralaAPI {
   
   // 5. REPORTS SERVICE - Automated report generation
   async getReportConfigs(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock report configs for demo account');
-      return this.getMockReportConfigs();
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1676,17 +2098,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.getMockReportConfigs();
+      throw new Error('All Reports API endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Get report configs error:', error);
-      return this.getMockReportConfigs();
+      throw error;
     }
   }
   
   async createReportConfig(reportConfig) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Creating mock report config');
-      return this.createMockReportConfig(reportConfig);
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1730,17 +2151,16 @@ class MagistralaAPI {
         }
       }
       
-      return this.createMockReportConfig(reportConfig);
+      throw new Error('All Reports create endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Create report config error:', error);
-      return this.createMockReportConfig(reportConfig);
+      throw error;
     }
   }
   
   async generateReport(configId, options = {}) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Generating mock report');
-      return this.generateMockReport(configId, options);
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1770,18 +2190,17 @@ class MagistralaAPI {
         }
       }
       
-      return this.generateMockReport(configId, options);
+      throw new Error('All Reports generate endpoints failed. Please check your Magistrala instance.');
     } catch (error) {
       console.error('Generate report error:', error);
-      return this.generateMockReport(configId, options);
+      throw error;
     }
   }
   
   // Connection Management - Connect/Disconnect Things to Channels
   async connectThingToChannel(thingId, channelId) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Simulating connection for demo account');
-      return { success: true, message: 'Demo connection successful' };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1828,9 +2247,8 @@ class MagistralaAPI {
   }
   
   async disconnectThingFromChannel(thingId, channelId) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Simulating disconnection for demo account');
-      return { success: true, message: 'Demo disconnection successful' };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1871,9 +2289,8 @@ class MagistralaAPI {
   
   // Get things connected to a channel
   async getChannelThings(channelId, offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock connections for demo account');
-      return { things: [], total: 0 };
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1915,10 +2332,8 @@ class MagistralaAPI {
 
   // LoRaWAN Specific Features with proper API integration
   async getLoRaWANDevices() {
-    // For demo accounts, return mock LoRaWAN data immediately
-    if (this.token && this.token.startsWith('demo_token_')) {
-      console.log('🎭 Using mock LoRaWAN devices for demo account');
-      return this.getMockLoRaWANDevices();
+    if (!this.token) {
+      throw new Error('Authentication required. Please login first.');
     }
 
     try {
@@ -1932,17 +2347,17 @@ class MagistralaAPI {
         device.metadata?.devEUI // Has LoRaWAN device identifier
       ) || [];
       
-      // If no LoRaWAN devices found in API, return some mock ones for demo
+      // If no LoRaWAN devices found in API, return empty array
       if (loraDevices.length === 0) {
-        console.log('📦 No LoRaWAN devices found, using mock data for demonstration');
-        return this.getMockLoRaWANDevices();
+        console.log('📦 No LoRaWAN devices found');
+        return [];
       }
       
       console.log(`✅ Found ${loraDevices.length} LoRaWAN devices`);
       return loraDevices;
     } catch (error) {
-      console.log('🔌 LoRaWAN API error, using mock data:', error.message);
-      return this.getMockLoRaWANDevices();
+      console.error('LoRaWAN API error:', error.message);
+      throw error;
     }
   }
 
@@ -1974,7 +2389,7 @@ class MagistralaAPI {
       return this.processAnalytics(messages, timeRange);
     } catch (error) {
       console.error('Analytics error:', error);
-      return this.getMockAnalytics(deviceId, timeRange);
+      throw error;
     }
   }
 
@@ -1990,1752 +2405,18 @@ class MagistralaAPI {
         networkLatency: Math.floor(Math.random() * 50 + 10) + 'ms',
       };
     } catch (error) {
-      return this.getMockNetworkHealth();
-    }
-  }
-
-  // Mock Data Methods (for demo purposes when API is not available)
-  getMockDevices() {
-    // First try to get devices from localStorage
-    try {
-      const localDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
-      if (localDevices.length > 0) {
-        return {
-          things: localDevices,
-          total: localDevices.length
-        };
-      }
-    } catch (error) {
-      console.error('Failed to load devices from localStorage:', error);
-    }
-
-    // Fallback to default mock devices
-    const defaultDevices = [
-      {
-        id: 'device-001',
-        name: 'Temperature Sensor #1',
-        status: 'online',
-        metadata: {
-          type: 'sensor',
-          protocol: 'mqtt',
-          location: 'Building A - Floor 1',
-          lastSeen: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          batteryLevel: 85,
-          signalStrength: -65,
-        },
-      },
-      {
-        id: 'device-002',
-        name: 'LoRaWAN Gateway #1',
-        status: 'online',
-        metadata: {
-          type: 'lorawan',
-          protocol: 'lorawan',
-          location: 'Building B - Roof',
-          devEUI: '0011223344556677',
-          appEUI: '7066554433221100',
-          frequency: '868MHz',
-          lastSeen: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-          batteryLevel: 92,
-          signalStrength: -72,
-        },
-      },
-      {
-        id: 'device-003',
-        name: 'Smart Actuator #1',
-        status: 'offline',
-        metadata: {
-          type: 'actuator',
-          protocol: 'coap',
-          location: 'Building C - Floor 2',
-          lastSeen: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          batteryLevel: 23,
-          signalStrength: -89,
-        },
-      },
-    ];
-    
-    // Save default devices to localStorage for consistency
-    localStorage.setItem('demo_devices', JSON.stringify(defaultDevices));
-    
-    return {
-      things: defaultDevices,
-      total: defaultDevices.length,
-    };
-  }
-
-  // Local storage helpers for demo mode
-  addDeviceToLocalStorage(device) {
-    try {
-      const existingDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
-      const updatedDevices = [...existingDevices, device];
-      localStorage.setItem('demo_devices', JSON.stringify(updatedDevices));
-      console.log('✅ Device added to local storage:', device.id);
-    } catch (error) {
-      console.error('Failed to save device to localStorage:', error);
-    }
-  }
-
-  removeDeviceFromLocalStorage(deviceId) {
-    try {
-      const existingDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
-      const updatedDevices = existingDevices.filter(d => d.id !== deviceId);
-      localStorage.setItem('demo_devices', JSON.stringify(updatedDevices));
-      console.log('✅ Device removed from local storage:', deviceId);
-    } catch (error) {
-      console.error('Failed to remove device from localStorage:', error);
-    }
-  }
-
-  updateDeviceInLocalStorage(deviceId, updates) {
-    try {
-      const existingDevices = JSON.parse(localStorage.getItem('demo_devices') || '[]');
-      const deviceIndex = existingDevices.findIndex(d => d.id === deviceId);
-      if (deviceIndex !== -1) {
-        existingDevices[deviceIndex] = { ...existingDevices[deviceIndex], ...updates };
-        localStorage.setItem('demo_devices', JSON.stringify(existingDevices));
-        console.log('✅ Device updated in local storage:', deviceId);
-        return existingDevices[deviceIndex];
-      }
-    } catch (error) {
-      console.error('Failed to update device in localStorage:', error);
-    }
-    return null;
-  }
-
-  getMockLoRaWANDevices() {
-    return [
-      {
-        id: 'lorawan-001',
-        name: 'LoRaWAN Sensor #1',
-        status: 'online',
-        metadata: {
-          type: 'lorawan',
-          protocol: 'lorawan',
-          location: 'Building A - Rooftop',
-          devEUI: '0011223344556677',
-          appEUI: '7066554433221100',
-          appKey: '00112233445566778899AABBCCDDEEFF',
-          frequency: '868MHz',
-          spreadingFactor: 'SF7',
-          bandwidth: '125kHz',
-          lastSeen: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-          batteryLevel: 92,
-          signalStrength: -75,
-        },
-      },
-      {
-        id: 'lorawan-002',
-        name: 'LoRaWAN Environmental Monitor',
-        status: 'online',
-        metadata: {
-          type: 'lorawan',
-          protocol: 'lorawan',
-          location: 'Building B - Floor 3',
-          devEUI: '8899AABBCCDDEEFF',
-          appEUI: 'FFEEDDCCBBAA9988',
-          appKey: 'FFEEDDCCBBAA99887766554433221100',
-          frequency: '915MHz',
-          spreadingFactor: 'SF10',
-          bandwidth: '125kHz',
-          lastSeen: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
-          batteryLevel: 67,
-          signalStrength: -95,
-        },
-      },
-      {
-        id: 'lorawan-003',
-        name: 'LoRaWAN Tracker',
-        status: 'offline',
-        metadata: {
-          type: 'lorawan',
-          protocol: 'lorawan',
-          location: 'Mobile Unit',
-          devEUI: 'AABBCCDDEEFF0011',
-          appEUI: '1100FFEEDDCCBBAA',
-          appKey: 'AABBCCDDEEFF001122334455667788999',
-          frequency: '868MHz',
-          spreadingFactor: 'SF12',
-          bandwidth: '125kHz',
-          lastSeen: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-          batteryLevel: 34,
-          signalStrength: -110,
-        },
-      },
-    ];
-  }
-
-  getMockChannels() {
-    return {
-      channels: [
-        {
-          id: 'channel-001',
-          name: 'Temperature Data',
-          metadata: {
-            type: 'sensor-data',
-            protocol: 'mqtt',
-            topic: '/sensors/temperature',
-          },
-        },
-        {
-          id: 'channel-002',
-          name: 'LoRaWAN Uplink',
-          metadata: {
-            type: 'lorawan-uplink',
-            protocol: 'lorawan',
-            topic: '/lorawan/uplink',
-          },
-        },
-      ],
-      total: 2,
-    };
-  }
-
-  getMockMessages(channelId) {
-    return {
-      messages: Array.from({ length: 20 }, (_, i) => ({
-        channel: channelId,
-        publisher: `device-${String(i % 3 + 1).padStart(3, '0')}`,
-        protocol: 'mqtt',
-        name: 'sensor-reading',
-        unit: '°C',
-        time: new Date(Date.now() - i * 5 * 60 * 1000).toISOString(),
-        value: (Math.random() * 30 + 10).toFixed(2),
-      })),
-      total: 20,
-    };
-  }
-
-  createMockDevice(device) {
-    return {
-      id: `device-${Date.now()}`,
-      name: device.name,
-      status: 'online',
-      metadata: device.metadata,
-      created_at: new Date().toISOString(),
-    };
-  }
-
-  createMockChannel(channel) {
-    return {
-      id: `channel-${Date.now()}`,
-      name: channel.name,
-      metadata: channel.metadata,
-      created_at: new Date().toISOString(),
-    };
-  }
-
-  getMockAnalytics(deviceId, timeRange) {
-    return {
-      deviceId,
-      timeRange,
-      metrics: {
-        messagesReceived: Math.floor(Math.random() * 1000 + 500),
-        averageLatency: Math.floor(Math.random() * 100 + 50),
-        errorRate: (Math.random() * 5).toFixed(2) + '%',
-        uptime: (95 + Math.random() * 5).toFixed(1) + '%',
-      },
-      timeSeries: Array.from({ length: 24 }, (_, i) => ({
-        timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toISOString(),
-        messages: Math.floor(Math.random() * 100 + 20),
-        latency: Math.floor(Math.random() * 50 + 30),
-      })),
-    };
-  }
-
-  getMockNetworkHealth() {
-    return {
-      status: 'healthy',
-      uptime: '99.8%',
-      activeDevices: 847,
-      messagesPerSecond: 73,
-      networkLatency: '24ms',
-      lastUpdated: new Date().toISOString(),
-    };
-  }
-  
-  // Mock data methods for advanced services
-  getMockBootstrapConfigs() {
-    return {
-      configs: [
-        {
-          thing_id: 'thing-bootstrap-001',
-          external_id: 'device-001-external',
-          external_key: 'device-001-key',
-          name: 'Temperature Sensor Bootstrap',
-          state: 'active',
-          channels: ['channel-001', 'channel-002'],
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          thing_id: 'thing-bootstrap-002', 
-          external_id: 'gateway-001-external',
-          external_key: 'gateway-001-key',
-          name: 'LoRaWAN Gateway Bootstrap',
-          state: 'inactive',
-          channels: ['channel-003'],
-          created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-  
-  getMockSubscriptions() {
-    return {
-      subscriptions: [
-        {
-          id: 'sub-001',
-          topic: 'channels.channel-001',
-          contact: 'admin@choovio.com',
-          type: 'email',
-          config: { subject: 'IoT Alert', template: 'default' },
-          created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 'sub-002',
-          topic: 'channels.*.temperature',
-          contact: '+1234567890',
-          type: 'sms',
-          config: { threshold: 25, condition: 'greater_than' },
-          created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-  
-  createMockBootstrapConfig(config) {
-    return {
-      thing_id: config.thing_id,
-      external_id: config.external_id,
-      external_key: config.external_key,
-      name: config.name,
-      state: 'active',
-      channels: config.channels || [],
-      created_at: new Date().toISOString()
-    };
-  }
-  
-  createMockSubscription(subscription) {
-    return {
-      id: `sub-${Date.now()}`,
-      topic: subscription.topic,
-      contact: subscription.contact,
-      type: subscription.type,
-      config: subscription.config || {},
-      created_at: new Date().toISOString()
-    };
-  }
-  
-  // Additional mock data methods for advanced services
-  simulateBulkProvision(provisionData) {
-    const results = {
-      things_created: [],
-      channels_created: [],
-      connections_created: [],
-      certificates_created: [],
-      errors: []
-    };
-    
-    // Simulate creating things
-    (provisionData.things || []).forEach((thing, index) => {
-      results.things_created.push({
-        external_id: thing.external_id,
-        thing_id: `thing-bulk-${Date.now()}-${index}`,
-        name: thing.name
-      });
-    });
-    
-    // Simulate creating channels
-    (provisionData.channels || []).forEach((channel, index) => {
-      results.channels_created.push({
-        external_id: channel.external_id,
-        channel_id: `channel-bulk-${Date.now()}-${index}`,
-        name: channel.name
-      });
-    });
-    
-    console.log(`🎭 Bulk provision simulation: ${results.things_created.length} things, ${results.channels_created.length} channels`);
-    return results;
-  }
-  
-  getMockRules() {
-    return {
-      rules: [
-        {
-          id: 'rule-001',
-          name: 'Temperature Alert Rule',
-          description: 'Send alert when temperature exceeds 25°C',
-          status: 'enabled',
-          logic: 'if message.temperature > 25 then\n  alert("High temperature: " .. message.temperature)\nend',
-          metadata: {
-            input_topic: 'channels.*.temperature',
-            output_topic: 'alerts.temperature',
-            last_execution: new Date(Date.now() - 10 * 60 * 1000).toISOString()
-          },
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 'rule-002',
-          name: 'Daily Summary Rule',
-          description: 'Generate daily device summary',
-          status: 'enabled',
-          logic: 'summary = {}\nfor device in devices do\n  summary[device.id] = device.message_count\nend\nreturn summary',
-          metadata: {
-            schedule: '0 0 * * *', // Daily at midnight
-            output_topic: 'reports.daily_summary'
-          },
-          created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-  
-  getMockReportConfigs() {
-    return {
-      configs: [
-        {
-          id: 'report-001',
-          name: 'Weekly Device Report',
-          description: 'Weekly summary of all device activities',
-          schedule: '0 9 * * 1', // Every Monday at 9 AM
-          format: 'PDF',
-          email_to: ['admin@choovio.com'],
-          config: {
-            channels: ['channel-001', 'channel-002'],
-            metrics: ['message_count', 'average_value', 'device_uptime'],
-            time_range: '7d'
-          },
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          last_generated: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 'report-002',
-          name: 'Daily Temperature Report',
-          description: 'Daily temperature trends and alerts',
-          schedule: '0 18 * * *', // Every day at 6 PM
-          format: 'CSV',
-          email_to: ['ops@choovio.com', 'alerts@choovio.com'],
-          config: {
-            channels: ['channel-001'],
-            metrics: ['min_temperature', 'max_temperature', 'avg_temperature'],
-            time_range: '24h'
-          },
-          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          last_generated: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-  
-  createMockRule(rule) {
-    return {
-      id: `rule-${Date.now()}`,
-      name: rule.name,
-      description: rule.description,
-      status: rule.status || 'enabled',
-      logic: rule.logic,
-      metadata: {
-        input_topic: rule.input_topic,
-        output_topic: rule.output_topic,
-        ...rule.metadata
-      },
-      created_at: new Date().toISOString()
-    };
-  }
-  
-  createMockReportConfig(config) {
-    return {
-      id: `report-${Date.now()}`,
-      name: config.name,
-      description: config.description,
-      schedule: config.schedule,
-      format: config.format || 'PDF',
-      email_to: config.email_to || [],
-      config: config.config || {},
-      created_at: new Date().toISOString()
-    };
-  }
-  
-  generateMockReport(configId, options) {
-    return {
-      report_id: `report-gen-${Date.now()}`,
-      config_id: configId,
-      status: 'generated',
-      download_url: `/reports/download/mock-report-${Date.now()}.pdf`,
-      generated_at: new Date().toISOString(),
-      file_size: '1.2MB',
-      format: options.format || 'PDF'
-    };
-  }
-
-  processAnalytics(messages, timeRange) {
-    // Process real message data for analytics
-    return {
-      messagesReceived: messages.total || 0,
-      averageLatency: 45,
-      errorRate: '1.2%',
-      uptime: '99.2%',
-    };
-  }
-
-  updateMockDevice(deviceId, updates) {
-    console.log('Mock device update successful:', deviceId, updates);
-    return {
-      id: deviceId,
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-  }
-
-  deleteMockDevice(deviceId) {
-    console.log('Mock device deleted successfully:', deviceId);
-    return true;
-  }
-
-  // =====================================
-  // BOOTSTRAP SERVICE METHODS
-  // =====================================
-
-  /**
-   * Bootstrap Service - Device Configuration Management
-   * Enables zero-touch device provisioning and configuration
-   */
-
-  // Get all bootstrap configurations
-  async getBootstrapConfigs(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.getMockBootstrapConfigs();
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.bootstrapURL}/configs?offset=${offset}&limit=${limit}`, type: 'proxy' },
-        { url: `${this.directBootstrapURL}/configs?offset=${offset}&limit=${limit}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            return {
-              configs: data.configs || [],
-              total: data.total || 0,
-              offset: data.offset || offset,
-              limit: data.limit || limit
-            };
-          }
-        } catch (error) {
-          console.log(`Bootstrap configs ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.getMockBootstrapConfigs();
-    } catch (error) {
-      console.error('Get bootstrap configs error:', error);
-      return this.getMockBootstrapConfigs();
-    }
-  }
-
-  // Create bootstrap configuration
-  async createBootstrapConfig(config) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.createMockBootstrapConfig(config);
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.bootstrapURL}/configs`, type: 'proxy' },
-        { url: `${this.directBootstrapURL}/configs`, type: 'direct' }
-      ];
-
-      const configData = {
-        external_id: config.externalId,
-        external_key: config.externalKey,
-        thing_id: config.thingId,
-        channels: config.channels || [],
-        content: config.content || {},
-        client_cert: config.clientCert,
-        client_key: config.clientKey,
-        ca_cert: config.caCert
-      };
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(configData)
-          });
-
-          if (response.ok) {
-            const createdConfig = await response.json();
-            console.log(`✅ Bootstrap config created via ${endpoint.type}`);
-            return createdConfig;
-          }
-        } catch (error) {
-          console.log(`Create bootstrap config ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.createMockBootstrapConfig(config);
-    } catch (error) {
-      console.error('Create bootstrap config error:', error);
-      return this.createMockBootstrapConfig(config);
-    }
-  }
-
-  // Update bootstrap configuration
-  async updateBootstrapConfig(configId, updates) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { ...updates, id: configId, updated_at: new Date().toISOString() };
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.bootstrapURL}/configs/${configId}`, type: 'proxy' },
-        { url: `${this.directBootstrapURL}/configs/${configId}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updates)
-          });
-
-          if (response.ok) {
-            console.log(`✅ Bootstrap config updated via ${endpoint.type}`);
-            return await response.json();
-          }
-        } catch (error) {
-          console.log(`Update bootstrap config ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return { ...updates, id: configId, updated_at: new Date().toISOString() };
-    } catch (error) {
-      console.error('Update bootstrap config error:', error);
-      return { ...updates, id: configId, updated_at: new Date().toISOString() };
-    }
-  }
-
-  // Enable/Disable bootstrap configuration
-  async toggleBootstrapConfig(configId, enable = true) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true, enabled: enable };
-    }
-
-    try {
-      const action = enable ? 'enable' : 'disable';
-      const endpoints = [
-        { url: `${this.bootstrapURL}/configs/${configId}/${action}`, type: 'proxy' },
-        { url: `${this.directBootstrapURL}/configs/${configId}/${action}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${this.token}`
-            }
-          });
-
-          if (response.ok) {
-            console.log(`✅ Bootstrap config ${action}d via ${endpoint.type}`);
-            return { success: true, enabled: enable };
-          }
-        } catch (error) {
-          console.log(`Toggle bootstrap config ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return { success: true, enabled: enable };
-    } catch (error) {
-      console.error('Toggle bootstrap config error:', error);
-      return { success: true, enabled: enable };
-    }
-  }
-
-  // =====================================
-  // CONSUMERS SERVICE METHODS
-  // =====================================
-
-  /**
-   * Consumers Service - Message Processing & Notifications
-   * Handles data storage and notification delivery
-   */
-
-  // Get all subscriptions
-  async getSubscriptions(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.getMockSubscriptions();
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.consumersURL}/subscriptions?offset=${offset}&limit=${limit}`, type: 'proxy' },
-        { url: `${this.directConsumersURL}/subscriptions?offset=${offset}&limit=${limit}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            return {
-              subscriptions: data.subscriptions || [],
-              total: data.total || 0
-            };
-          }
-        } catch (error) {
-          console.log(`Subscriptions ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.getMockSubscriptions();
-    } catch (error) {
-      console.error('Get subscriptions error:', error);
-      return this.getMockSubscriptions();
-    }
-  }
-
-  // Create subscription (for notifications/data storage)
-  async createSubscription(subscription) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.createMockSubscription(subscription);
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.consumersURL}/subscriptions`, type: 'proxy' },
-        { url: `${this.directConsumersURL}/subscriptions`, type: 'direct' }
-      ];
-
-      const subscriptionData = {
-        topic: subscription.topic,
-        contact: subscription.contact, // email, phone number, etc.
-        type: subscription.type, // smtp, smpp, postgres, timescale
-        config: subscription.config || {}
-      };
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(subscriptionData)
-          });
-
-          if (response.ok) {
-            const created = await response.json();
-            console.log(`✅ Subscription created via ${endpoint.type}`);
-            return created;
-          }
-        } catch (error) {
-          console.log(`Create subscription ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.createMockSubscription(subscription);
-    } catch (error) {
-      console.error('Create subscription error:', error);
-      return this.createMockSubscription(subscription);
-    }
-  }
-
-  // Delete subscription
-  async deleteSubscription(subscriptionId) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true };
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.consumersURL}/subscriptions/${subscriptionId}`, type: 'proxy' },
-        { url: `${this.directConsumersURL}/subscriptions/${subscriptionId}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${this.token}`
-            }
-          });
-
-          if (response.ok) {
-            console.log(`✅ Subscription deleted via ${endpoint.type}`);
-            return { success: true };
-          }
-        } catch (error) {
-          console.log(`Delete subscription ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Delete subscription error:', error);
-      return { success: true };
-    }
-  }
-
-  // =====================================
-  // PROVISION SERVICE METHODS
-  // =====================================
-
-  /**
-   * Provision Service - Bulk Device Provisioning
-   * Handles bulk creation and configuration of devices
-   */
-
-  // Bulk provision devices and channels
-  async bulkProvision(provisionData) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.getMockBulkProvisionResult(provisionData);
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.provisionURL}/mapping`, type: 'proxy' },
-        { url: `${this.directProvisionURL}/mapping`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(provisionData)
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log(`✅ Bulk provision completed via ${endpoint.type}`);
-            return result;
-          }
-        } catch (error) {
-          console.log(`Bulk provision ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.getMockBulkProvisionResult(provisionData);
-    } catch (error) {
-      console.error('Bulk provision error:', error);
-      return this.getMockBulkProvisionResult(provisionData);
-    }
-  }
-
-  // =====================================
-  // RULES ENGINE METHODS
-  // =====================================
-
-  /**
-   * Rules Engine - Message Processing Rules
-   * Enables Lua-based message processing and routing
-   */
-
-  // Get all rules
-  async getRules(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.getMockRules();
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.rulesURL}/rules?offset=${offset}&limit=${limit}`, type: 'proxy' },
-        { url: `${this.directRulesURL}/rules?offset=${offset}&limit=${limit}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            return {
-              rules: data.rules || [],
-              total: data.total || 0
-            };
-          }
-        } catch (error) {
-          console.log(`Rules ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.getMockRules();
-    } catch (error) {
-      console.error('Get rules error:', error);
-      return this.getMockRules();
-    }
-  }
-
-  // Create rule
-  async createRule(rule) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.createMockRule(rule);
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.rulesURL}/rules`, type: 'proxy' },
-        { url: `${this.directRulesURL}/rules`, type: 'direct' }
-      ];
-
-      const ruleData = {
-        name: rule.name,
-        description: rule.description,
-        logic: rule.logic, // Lua script
-        input_channel: rule.inputChannel,
-        output_channel: rule.outputChannel,
-        schedule: rule.schedule,
-        enabled: rule.enabled !== false
-      };
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(ruleData)
-          });
-
-          if (response.ok) {
-            const created = await response.json();
-            console.log(`✅ Rule created via ${endpoint.type}`);
-            return created;
-          }
-        } catch (error) {
-          console.log(`Create rule ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.createMockRule(rule);
-    } catch (error) {
-      console.error('Create rule error:', error);
-      return this.createMockRule(rule);
-    }
-  }
-
-  // Update rule
-  async updateRule(ruleId, updates) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { ...updates, id: ruleId, updated_at: new Date().toISOString() };
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.rulesURL}/rules/${ruleId}`, type: 'proxy' },
-        { url: `${this.directRulesURL}/rules/${ruleId}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updates)
-          });
-
-          if (response.ok) {
-            console.log(`✅ Rule updated via ${endpoint.type}`);
-            return await response.json();
-          }
-        } catch (error) {
-          console.log(`Update rule ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return { ...updates, id: ruleId, updated_at: new Date().toISOString() };
-    } catch (error) {
-      console.error('Update rule error:', error);
-      return { ...updates, id: ruleId, updated_at: new Date().toISOString() };
-    }
-  }
-
-  // Enable/Disable rule
-  async toggleRule(ruleId, enable = true) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true, enabled: enable };
-    }
-
-    try {
-      const action = enable ? 'enable' : 'disable';
-      const endpoints = [
-        { url: `${this.rulesURL}/rules/${ruleId}/${action}`, type: 'proxy' },
-        { url: `${this.directRulesURL}/rules/${ruleId}/${action}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${this.token}`
-            }
-          });
-
-          if (response.ok) {
-            console.log(`✅ Rule ${action}d via ${endpoint.type}`);
-            return { success: true, enabled: enable };
-          }
-        } catch (error) {
-          console.log(`Toggle rule ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return { success: true, enabled: enable };
-    } catch (error) {
-      console.error('Toggle rule error:', error);
-      return { success: true, enabled: enable };
-    }
-  }
-
-  // Delete rule
-  async deleteRule(ruleId) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return { success: true };
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.rulesURL}/rules/${ruleId}`, type: 'proxy' },
-        { url: `${this.directRulesURL}/rules/${ruleId}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${this.token}`
-            }
-          });
-
-          if (response.ok) {
-            console.log(`✅ Rule deleted via ${endpoint.type}`);
-            return { success: true };
-          }
-        } catch (error) {
-          console.log(`Delete rule ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Delete rule error:', error);
-      return { success: true };
-    }
-  }
-
-  // =====================================
-  // REPORTS SERVICE METHODS
-  // =====================================
-
-  /**
-   * Reports Service - Automated Report Generation
-   * Handles scheduled reports and data export
-   */
-
-  // Get all report configurations
-  async getReportConfigs(offset = 0, limit = 100) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.getMockReportConfigs();
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.reportsURL}/configs?offset=${offset}&limit=${limit}`, type: 'proxy' },
-        { url: `${this.directReportsURL}/configs?offset=${offset}&limit=${limit}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            return {
-              configs: data.configs || [],
-              total: data.total || 0
-            };
-          }
-        } catch (error) {
-          console.log(`Report configs ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.getMockReportConfigs();
-    } catch (error) {
-      console.error('Get report configs error:', error);
-      return this.getMockReportConfigs();
-    }
-  }
-
-  // Create report configuration
-  async createReportConfig(config) {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.createMockReportConfig(config);
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.reportsURL}/configs`, type: 'proxy' },
-        { url: `${this.directReportsURL}/configs`, type: 'direct' }
-      ];
-
-      const configData = {
-        name: config.name,
-        schedule: config.schedule, // cron expression
-        format: config.format || 'PDF', // PDF, CSV
-        recipients: config.recipients || [],
-        metrics: config.metrics || [],
-        filters: config.filters || {},
-        enabled: config.enabled !== false
-      };
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(configData)
-          });
-
-          if (response.ok) {
-            const created = await response.json();
-            console.log(`✅ Report config created via ${endpoint.type}`);
-            return created;
-          }
-        } catch (error) {
-          console.log(`Create report config ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.createMockReportConfig(config);
-    } catch (error) {
-      console.error('Create report config error:', error);
-      return this.createMockReportConfig(config);
-    }
-  }
-
-  // Generate report immediately
-  async generateReport(configId, format = 'PDF') {
-    if (!this.token || this.token.startsWith('demo_token_')) {
-      return this.getMockReportGeneration(configId, format);
-    }
-
-    try {
-      const endpoints = [
-        { url: `${this.reportsURL}/generate/${configId}?format=${format}`, type: 'proxy' },
-        { url: `${this.directReportsURL}/generate/${configId}?format=${format}`, type: 'direct' }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint.url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.token}`
-            }
-          });
-
-          if (response.ok) {
-            // Handle different response types (PDF blob, CSV text, or JSON with download URL)
-            const contentType = response.headers.get('content-type');
-            
-            if (contentType?.includes('application/pdf')) {
-              const blob = await response.blob();
-              const url = URL.createObjectURL(blob);
-              return { success: true, downloadUrl: url, format: 'PDF' };
-            } else if (contentType?.includes('text/csv')) {
-              const csvData = await response.text();
-              const blob = new Blob([csvData], { type: 'text/csv' });
-              const url = URL.createObjectURL(blob);
-              return { success: true, downloadUrl: url, format: 'CSV' };
-            } else {
-              const result = await response.json();
-              return result;
-            }
-          }
-        } catch (error) {
-          console.log(`Generate report ${endpoint.type} error:`, error.message);
-        }
-      }
-
-      return this.getMockReportGeneration(configId, format);
-    } catch (error) {
-      console.error('Generate report error:', error);
-      return this.getMockReportGeneration(configId, format);
-    }
-  }
-
-  // =====================================
-  // MOCK DATA METHODS FOR ADVANCED SERVICES
-  // =====================================
-
-  getMockBootstrapConfigs() {
-    return {
-      configs: [
-        {
-          id: 'bootstrap-001',
-          external_id: 'device-external-001',
-          external_key: 'bootstrap-key-001',
-          thing_id: 'device-001',
-          channels: ['channel-001', 'channel-002'],
-          content: {
-            mqtt_host: 'localhost:1883',
-            ca_cert: 'ca.crt',
-            thing_cert: 'thing.crt',
-            thing_key: 'thing.key'
-          },
-          enabled: true,
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 1
-    };
-  }
-
-  createMockBootstrapConfig(config) {
-    return {
-      id: `bootstrap-${Date.now()}`,
-      external_id: config.externalId,
-      external_key: config.externalKey,
-      thing_id: config.thingId,
-      channels: config.channels || [],
-      content: config.content || {},
-      enabled: true,
-      created_at: new Date().toISOString()
-    };
-  }
-
-  getMockSubscriptions() {
-    return {
-      subscriptions: [
-        {
-          id: 'sub-001',
-          topic: 'channels.*.messages',
-          type: 'smtp',
-          contact: 'admin@example.com',
-          config: {
-            smtp_host: 'smtp.gmail.com',
-            smtp_port: 587,
-            username: 'notifications@example.com'
-          },
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 'sub-002',
-          topic: 'channels.temperature.messages',
-          type: 'timescale',
-          contact: '',
-          config: {
-            host: 'localhost:5432',
-            database: 'magistrala'
-          },
-          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-
-  createMockSubscription(subscription) {
-    return {
-      id: `sub-${Date.now()}`,
-      topic: subscription.topic,
-      type: subscription.type,
-      contact: subscription.contact,
-      config: subscription.config || {},
-      created_at: new Date().toISOString()
-    };
-  }
-
-  getMockBulkProvisionResult(provisionData) {
-    return {
-      success: true,
-      created_things: provisionData.things?.length || 0,
-      created_channels: provisionData.channels?.length || 0,
-      connections_made: Math.min(provisionData.things?.length || 0, provisionData.channels?.length || 0),
-      message: 'Bulk provisioning completed successfully'
-    };
-  }
-
-  getMockRules() {
-    return {
-      rules: [
-        {
-          id: 'rule-001',
-          name: 'Temperature Alert',
-          description: 'Alert when temperature exceeds 35°C',
-          logic: `
-if message and message[1] and message[1].n == "temperature" then
-  local temp = message[1].v
-  if temp > 35 then
-    local alert = {{
-      n = "alert",
-      vs = "Temperature too high: " .. temp .. "°C",
-      t = message[1].t
-    }}
-    return alert
-  end
-end
-return nil`,
-          input_channel: 'channel-001',
-          output_channel: 'channel-alerts',
-          enabled: true,
-          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          last_executed: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-        },
-        {
-          id: 'rule-002',
-          name: 'Data Aggregation',
-          description: 'Aggregate sensor readings every 5 minutes',
-          logic: `
--- Aggregate multiple sensor readings
-local aggregated = {}
-if message then
-  for i, record in ipairs(message) do
-    if record.n and record.v then
-      aggregated[record.n] = (aggregated[record.n] or 0) + record.v
-    end
-  end
-end
-return aggregated`,
-          input_channel: 'channel-002',
-          output_channel: 'channel-aggregated',
-          schedule: '*/5 * * * *', // Every 5 minutes
-          enabled: true,
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-
-  createMockRule(rule) {
-    return {
-      id: `rule-${Date.now()}`,
-      name: rule.name,
-      description: rule.description,
-      logic: rule.logic,
-      input_channel: rule.inputChannel,
-      output_channel: rule.outputChannel,
-      schedule: rule.schedule,
-      enabled: rule.enabled !== false,
-      created_at: new Date().toISOString()
-    };
-  }
-
-  getMockReportConfigs() {
-    return {
-      configs: [
-        {
-          id: 'report-001',
-          name: 'Daily Temperature Report',
-          schedule: '0 8 * * *', // Daily at 8 AM
-          format: 'PDF',
-          recipients: ['manager@example.com'],
-          metrics: [
-            { name: 'temperature', aggregation: 'AVG' },
-            { name: 'humidity', aggregation: 'MAX' }
-          ],
-          filters: {
-            channels: ['channel-001'],
-            time_range: '24h'
-          },
-          enabled: true,
-          created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-          last_generated: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 'report-002',
-          name: 'Weekly Device Status Report',
-          schedule: '0 9 * * 1', // Mondays at 9 AM
-          format: 'CSV',
-          recipients: ['admin@example.com', 'tech@example.com'],
-          metrics: [
-            { name: 'device_uptime', aggregation: 'AVG' },
-            { name: 'message_count', aggregation: 'SUM' }
-          ],
-          filters: {
-            time_range: '7d'
-          },
-          enabled: true,
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      total: 2
-    };
-  }
-
-  createMockReportConfig(config) {
-    return {
-      id: `report-${Date.now()}`,
-      name: config.name,
-      schedule: config.schedule,
-      format: config.format || 'PDF',
-      recipients: config.recipients || [],
-      metrics: config.metrics || [],
-      filters: config.filters || {},
-      enabled: config.enabled !== false,
-      created_at: new Date().toISOString()
-    };
-  }
-
-  getMockReportGeneration(configId, format) {
-    // Create a mock file blob
-    const mockContent = format === 'PDF' 
-      ? 'Mock PDF report content' 
-      : 'Device,Status,Last Seen\nDevice 1,Online,2023-01-01\nDevice 2,Offline,2023-01-02';
-    
-    const mimeType = format === 'PDF' ? 'application/pdf' : 'text/csv';
-    const blob = new Blob([mockContent], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    
-    return {
-      success: true,
-      downloadUrl: url,
-      format: format,
-      filename: `report-${configId}-${Date.now()}.${format.toLowerCase()}`,
-      generated_at: new Date().toISOString()
-    };
-  }
-
-  // ===== MULTI-PROTOCOL MESSAGING SUPPORT =====
-  
-  async sendMessageViaCoAP(channelId, message, thingSecret) {
-    // CoAP support for Magistrala
-    // Note: This requires a CoAP client library for full implementation
-    console.log('📡 CoAP messaging not yet implemented in browser environment');
-    console.log('CoAP is typically used in IoT devices, not web browsers');
-    
-    // For demonstration, we'll provide the CoAP endpoint info
-    const coapPort = process.env.REACT_APP_MAGISTRALA_COAP_PORT || '5683';
-    const coapURL = `coap://${this.baseURL.replace('http://', '').replace('https://', '')}:${coapPort}`;
-    
-    return {
-      success: false,
-      message: 'CoAP not supported in browser environment',
-      info: {
-        endpoint: `${coapURL}/channels/${channelId}/messages`,
-        description: 'CoAP is designed for constrained devices and typically not used from browsers',
-        alternative: 'Use HTTP, WebSocket, or MQTT protocols instead'
-      }
-    };
-  }
-
-  async sendMessageViaWebSocket(channelId, message, token) {
-    // WebSocket messaging is handled by the realtimeService
-    console.log('📡 WebSocket messaging should be handled via realtimeService');
-    
-    const wsPort = process.env.REACT_APP_MAGISTRALA_WS_PORT || '8186';
-    const wsURL = `ws://${this.baseURL.replace('http://', '').replace('https://', '')}:${wsPort}`;
-    
-    return {
-      success: false,
-      message: 'Use realtimeService for WebSocket messaging',
-      info: {
-        endpoint: `${wsURL}/channels/${channelId}/messages`,
-        service: 'realtimeService.connectWebSocket()',
-        description: 'WebSocket connections require persistent connection management'
-      }
-    };
-  }
-
-  // Multi-protocol message sending with protocol detection
-  async sendMessageMultiProtocol(channelId, message, options = {}) {
-    const { 
-      protocol = 'http', 
-      thingSecret, 
-      token = this.token,
-      subtopic = 'data',
-      contentType = 'application/senml+json'
-    } = options;
-
-    console.log(`📤 Sending message via ${protocol.toUpperCase()} to channel ${channelId}`);
-
-    switch (protocol.toLowerCase()) {
-      case 'http':
-        return this.sendMessage(channelId, message, thingSecret);
-      
-      case 'mqtt':
-        // MQTT is handled by realtimeService
-        console.log('📡 MQTT messaging should be handled via realtimeService');
-        return {
-          success: false,
-          message: 'Use realtimeService for MQTT messaging',
-          info: {
-            service: 'realtimeService.publishMessage()',
-            description: 'MQTT requires persistent connection management'
-          }
-        };
-      
-      case 'websocket':
-        return this.sendMessageViaWebSocket(channelId, message, token);
-      
-      case 'coap':
-        return this.sendMessageViaCoAP(channelId, message, thingSecret);
-      
-      default:
-        throw new Error(`Unsupported protocol: ${protocol}`);
-    }
-  }
-
-  // Get available protocols for a channel
-  getAvailableProtocols(channelMetadata = {}) {
-    const protocols = [
-      {
-        name: 'HTTP',
-        key: 'http',
-        port: process.env.REACT_APP_MAGISTRALA_HTTP_PORT || '8008',
-        description: 'RESTful HTTP messaging with SenML format',
-        supported: true,
-        browserCompatible: true
-      },
-      {
-        name: 'MQTT',
-        key: 'mqtt',
-        port: process.env.REACT_APP_MAGISTRALA_MQTT_PORT || '1883',
-        description: 'MQTT publish/subscribe messaging',
-        supported: true,
-        browserCompatible: true,
-        requiresWebSocket: true
-      },
-      {
-        name: 'WebSocket',
-        key: 'websocket',
-        port: process.env.REACT_APP_MAGISTRALA_WS_PORT || '8186',
-        description: 'Real-time WebSocket messaging',
-        supported: true,
-        browserCompatible: true
-      },
-      {
-        name: 'CoAP',
-        key: 'coap',
-        port: process.env.REACT_APP_MAGISTRALA_COAP_PORT || '5683',
-        description: 'Constrained Application Protocol (UDP-based)',
-        supported: false,
-        browserCompatible: false,
-        note: 'Not supported in browser environment'
-      },
-      {
-        name: 'LoRaWAN',
-        key: 'lorawan',
-        port: 'N/A',
-        description: 'Long Range Wide Area Network protocol',
-        supported: true,
-        browserCompatible: false,
-        note: 'Requires LoRaWAN gateway and network server'
-      }
-    ];
-
-    // Filter based on channel metadata if specific protocols are configured
-    if (channelMetadata && channelMetadata.protocols) {
-      const enabledProtocols = channelMetadata.protocols;
-      return protocols.filter(p => enabledProtocols.includes(p.key));
-    }
-
-    return protocols;
-  }
-
-  // Protocol-specific endpoint generation
-  getProtocolEndpoint(protocol, channelId, subtopic = 'data') {
-    const baseHost = this.baseURL.replace('http://', '').replace('https://', '');
-    
-    switch (protocol.toLowerCase()) {
-      case 'http':
-        return `${this.httpURL}/channels/${channelId}/messages/${subtopic}`;
-      
-      case 'mqtt':
-        const mqttPort = process.env.REACT_APP_MAGISTRALA_MQTT_PORT || '1883';
-        return {
-          broker: `${baseHost}:${mqttPort}`,
-          topic: `channels/${channelId}/messages/${subtopic}`,
-          websocketBroker: `ws://${baseHost}:9001` // MQTT over WebSocket
-        };
-      
-      case 'websocket':
-        const wsPort = process.env.REACT_APP_MAGISTRALA_WS_PORT || '8186';
-        return `ws://${baseHost}:${wsPort}/channels/${channelId}/messages`;
-      
-      case 'coap':
-        const coapPort = process.env.REACT_APP_MAGISTRALA_COAP_PORT || '5683';
-        return `coap://${baseHost}:${coapPort}/channels/${channelId}/messages/${subtopic}`;
-      
-      default:
-        throw new Error(`Unknown protocol: ${protocol}`);
-    }
-  }
-
-  // Enhanced protocol detection from channel metadata
-  detectPreferredProtocol(channelMetadata = {}) {
-    // Check for explicit protocol preference in metadata
-    if (channelMetadata.preferred_protocol) {
-      return channelMetadata.preferred_protocol;
-    }
-    
-    // Check for protocol-specific configuration
-    if (channelMetadata.mqtt_config) return 'mqtt';
-    if (channelMetadata.websocket_config) return 'websocket';
-    if (channelMetadata.coap_config) return 'coap';
-    if (channelMetadata.lorawan_config) return 'lorawan';
-    
-    // Default to HTTP for maximum compatibility
-    return 'http';
-  }
-
-  // ===== CERTIFICATES SERVICE =====
-  
-  async getCertificates(offset = 0, limit = 100) {
-    try {
-      console.log('🔍 Fetching certificates...');
-      
-      // Mock certificates for demo - Magistrala Certificates service integration
-      return this.getMockCertificates();
-    } catch (error) {
-      console.error('Get certificates error:', error);
-      return this.getMockCertificates();
-    }
-  }
-
-  async generateCertificate(certData) {
-    try {
-      console.log('🔧 Generating certificate:', certData);
-      
-      // For demo, create mock certificate
-      const newCert = {
-        id: `cert-${Date.now()}`,
-        thing_id: certData.thing_id,
-        type: certData.type || 'x509',
-        subject: `CN=${certData.thing_id},O=Magistrala IoT`,
-        issuer: 'CN=Magistrala CA,O=Magistrala IoT Platform',
-        serial_number: Math.random().toString(16).substr(2, 12),
-        algorithm: certData.algorithm || 'RSA-2048',
-        fingerprint: `SHA256:${Math.random().toString(16).substr(2, 16)}...`,
-        issued_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + parseInt(certData.valid_for || 365) * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'valid',
-        usage: ['client_auth', 'digital_signature'],
-        certificate: `-----BEGIN CERTIFICATE-----\\nMIIDXTCCAkWgAwIBAgIJAKL4L4L4L4L4MA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV\\n...\\n-----END CERTIFICATE-----`,
-        private_key: `-----BEGIN PRIVATE KEY-----\\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\\n-----END PRIVATE KEY-----`
-      };
-      
-      console.log('✅ Certificate generated:', newCert.id);
-      return newCert;
-    } catch (error) {
-      console.error('Certificate generation error:', error);
       throw error;
     }
   }
 
-  getMockCertificates() {
+  // Helper method to process analytics data
+  processAnalytics(messages, timeRange) {
+    // Process message data for analytics
     return {
-      certificates: [
-        {
-          id: 'cert-001',
-          thing_id: 'thing-temp-sensor-001',
-          type: 'x509',
-          subject: 'CN=Temperature Sensor 001,O=Magistrala IoT',
-          issuer: 'CN=Magistrala CA,O=Magistrala IoT Platform',
-          serial_number: '1a:2b:3c:4d:5e:6f',
-          algorithm: 'RSA-2048',
-          fingerprint: 'SHA256:a1b2c3d4e5f6...',
-          issued_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          expires_at: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'valid',
-          usage: ['client_auth', 'digital_signature']
-        }
-      ],
-      total: 1
+      messageCount: messages.messages?.length || 0,
+      timeRange: timeRange,
+      processed: true
     };
-  }
-
-  // ===== LOCAL STORAGE HELPERS FOR PERSISTENCE =====
-  
-  addRuleToLocalStorage(rule) {
-    try {
-      const existingRules = JSON.parse(localStorage.getItem('demo_rules') || '[]');
-      const updatedRules = [...existingRules, rule];
-      localStorage.setItem('demo_rules', JSON.stringify(updatedRules));
-      console.log('✅ Rule added to local storage:', rule.id);
-    } catch (error) {
-      console.error('Failed to save rule to localStorage:', error);
-    }
-  }
-
-  addBootstrapConfigToLocalStorage(config) {
-    try {
-      const existingConfigs = JSON.parse(localStorage.getItem('demo_bootstrap_configs') || '[]');
-      const updatedConfigs = [...existingConfigs, config];
-      localStorage.setItem('demo_bootstrap_configs', JSON.stringify(updatedConfigs));
-      console.log('✅ Bootstrap config added to local storage:', config.thing_id);
-    } catch (error) {
-      console.error('Failed to save bootstrap config to localStorage:', error);
-    }
-  }
-
-  addSubscriptionToLocalStorage(subscription) {
-    try {
-      const existingSubscriptions = JSON.parse(localStorage.getItem('demo_subscriptions') || '[]');
-      const updatedSubscriptions = [...existingSubscriptions, subscription];
-      localStorage.setItem('demo_subscriptions', JSON.stringify(updatedSubscriptions));
-      console.log('✅ Subscription added to local storage:', subscription.id);
-    } catch (error) {
-      console.error('Failed to save subscription to localStorage:', error);
-    }
   }
 }
 

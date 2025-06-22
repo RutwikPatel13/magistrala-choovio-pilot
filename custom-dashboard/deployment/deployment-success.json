@@ -1,0 +1,25 @@
+{
+  "deployment_status": "SUCCESS",
+  "bucket": "choovio-dashboard",
+  "region": "us-east-1",
+  "deployed_at": "2024-06-22T12:18:30Z",
+  "urls": {
+    "static_website": "http://choovio-dashboard.s3-website-us-east-1.amazonaws.com",
+    "s3_direct": "https://choovio-dashboard.s3.amazonaws.com/index.html"
+  },
+  "files_deployed": [
+    "index.html",
+    "asset-manifest.json", 
+    "favicon.ico",
+    "static/css/main.505885a0.css",
+    "static/js/main.5f6d9fce.js",
+    "static/js/835.d76dcab0.chunk.js",
+    "static/js/main.5f6d9fce.js.LICENSE.txt"
+  ],
+  "features": {
+    "authentication": "removed",
+    "advanced_services": "removed",
+    "lorawan_focus": "enabled",
+    "public_access": true
+  }
+}
