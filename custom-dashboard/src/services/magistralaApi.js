@@ -274,13 +274,42 @@ class MagistralaAPI {
           // Store working endpoint for future use
           this.workingEndpoints.users = endpoint.type;
           
-          // Use user info from login response (Magistrala includes it)
-          const userData = data.user || {
+          // Get real user data by fetching user info with token
+          let userData = data.user || {
             id: data.user_id || 'unknown',
             name: 'User',
             email: email,
             role: 'User'
           };
+          
+          // Try to get real user data from users API
+          try {
+            const usersResponse = await fetch(`${this.directUsersURL}/users`, {
+              headers: {
+                'Authorization': `Bearer ${data.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (usersResponse.ok) {
+              const usersData = await usersResponse.json();
+              const realUser = usersData.users?.find(user => 
+                user.credentials?.identity === email || user.email === email
+              );
+              
+              if (realUser) {
+                userData = {
+                  id: realUser.id,
+                  name: realUser.name,
+                  email: realUser.credentials?.identity || realUser.email || email,
+                  role: realUser.role || 'User'
+                };
+                console.log('✅ Found real user data:', userData);
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ Could not fetch real user data, using fallback');
+          }
           
           // Store user data for profile access
           this.currentUser = userData;
