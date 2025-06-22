@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { FiBell, FiUser, FiSearch, FiSettings, FiLogOut, FiMail } from 'react-icons/fi';
+import { FiBell, FiUser, FiSearch, FiSettings, FiMail, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 
 const HeaderContainer = styled.header`
@@ -264,15 +264,21 @@ const Header = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isDemo } = useAuth();
   const navigate = useNavigate();
 
   const searchData = [
     { type: 'device', title: 'Temperature Sensor #1', subtitle: 'Building A - Floor 1' },
     { type: 'device', title: 'LoRaWAN Gateway #1', subtitle: 'Building B - Roof' },
+    { type: 'device', title: 'Humidity Sensor #2', subtitle: 'Building C - Floor 2' },
     { type: 'channel', title: 'Temperature Data Channel', subtitle: 'MQTT Channel' },
     { type: 'channel', title: 'LoRaWAN Uplink Channel', subtitle: 'LoRaWAN Protocol' },
-    { type: 'data', title: 'Sensor Readings Database', subtitle: 'PostgreSQL' },
+    { type: 'channel', title: 'Actuator Commands', subtitle: 'HTTP Channel' },
+    { type: 'message', title: 'Recent Messages', subtitle: 'View all device messages' },
+    { type: 'message', title: 'Temperature Readings', subtitle: 'Last 24 hours' },
+    { type: 'data', title: 'Data Storage', subtitle: 'Manage stored data' },
+    { type: 'data', title: 'Export Data', subtitle: 'Download sensor data' },
+    { type: 'user', title: 'User Management', subtitle: 'Manage users and roles' },
     { type: 'user', title: 'John Doe', subtitle: 'Administrator' },
   ];
 
@@ -318,17 +324,28 @@ const Header = () => {
     setShowSearchResults(value.length > 0);
   };
 
-  const handleSearchItemClick = (item) => {
+  const handleSearchItemClick = (item, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔍 Search item clicked:', item);
+    
     setSearchTerm('');
     setShowSearchResults(false);
+    
     // Navigate based on item type
     const routes = {
       device: '/devices',
       channel: '/channels',
-      data: '/messages',
+      data: '/data',
+      message: '/messages',
       user: '/users'
     };
-    navigate(routes[item.type] || '/');
+    
+    const targetRoute = routes[item.type] || '/';
+    console.log('🔍 Navigating to:', targetRoute);
+    
+    navigate(targetRoute);
   };
 
   const handleNotificationClick = () => {
@@ -351,10 +368,7 @@ const Header = () => {
         navigate('/settings');
         break;
       case 'logout':
-        if (window.confirm('Are you sure you want to logout?')) {
-          logout();
-          navigate('/login');
-        }
+        logout();
         break;
       default:
         break;
@@ -363,7 +377,12 @@ const Header = () => {
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (event) => {
+      // Don't close if clicking on a search item
+      if (event.target.closest('.search-item')) {
+        return;
+      }
+      
       setShowSearchResults(false);
       setShowNotifications(false);
       setShowUserMenu(false);
@@ -390,13 +409,13 @@ const Header = () => {
           onFocus={() => searchTerm && setShowSearchResults(true)}
         />
         {showSearchResults && (
-          <SearchResults>
+          <SearchResults onClick={(e) => e.stopPropagation()}>
             {filteredResults.length > 0 ? (
               filteredResults.map((item, index) => (
                 <div 
                   key={index} 
                   className="search-item"
-                  onClick={() => handleSearchItemClick(item)}
+                  onClick={(e) => handleSearchItemClick(item, e)}
                 >
                   <div className="item-title">{item.title}</div>
                   <div className="item-subtitle">{item.subtitle}</div>
@@ -467,9 +486,15 @@ const Header = () => {
             <div 
               className="user-menu-item logout"
               onClick={() => handleUserMenuAction('logout')}
+              style={{ 
+                borderTop: '1px solid #e2e8f0', 
+                marginTop: '0.5rem', 
+                paddingTop: '0.75rem',
+                color: '#e53e3e'
+              }}
             >
               <FiLogOut size={16} />
-              Logout
+              Sign Out
             </div>
           </UserDropdown>
         )}
