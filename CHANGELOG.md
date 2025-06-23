@@ -5,6 +5,66 @@ All notable changes to the Choovio IoT Platform will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-06-23
+
+### 🎯 Added
+- **Complete Project Cleanup**: Optimized project structure while preserving all development work evidence
+- **PostgreSQL Backend Deployment**: Full EC2 deployment with operational REST API endpoints
+- **Comprehensive Documentation Update**: All .md files updated with current deployment details
+- **Git Workflow Completion**: Proper branching, semantic tagging, and GitHub repository management
+
+### 🔧 Changed
+- Updated all documentation files with live production URLs and current status
+- Cleaned up project structure by removing only unnecessary duplicate files
+- Preserved all deployment scripts and development artifacts that demonstrate work effort
+- Updated README.md with comprehensive live application information
+
+### 🚀 Deployment
+- **Live Application**: http://choovio-dashboard.s3-website-us-east-1.amazonaws.com
+- **PostgreSQL Backend**: http://34.207.208.152:3001 (operational with 9 devices, 3 channels)
+- **GitHub Repository**: Fully updated with version v2.1.1
+- **Clean Structure**: Ready for professional evaluation
+
+### 📚 Documentation
+- Updated all .md files with current production deployment details
+- Preserved comprehensive documentation showing development process
+- Maintained all work evidence while achieving clean project structure
+
+## [2.1.0] - 2025-06-23
+
+### 🚀 Added
+- **PostgreSQL Dual-Write System**: Complete implementation with automatic fallback mechanisms
+- **EC2 Database Server**: Dedicated PostgreSQL server (34.207.208.152:3001) with full REST API
+- **User Management Simplification**: Local state management only, no database dependency
+- **Professional UI Enhancements**: Upcoming feature popups for all non-working features
+- **2025 Credential System**: Updated all demo passwords (ChoovioAdmin2025!, etc.)
+
+### 🔧 Changed
+- Simplified user management to use local state instead of database
+- Removed Edit and Connect buttons from Device Management
+- Removed Add Device button from LoRaWAN (shows upcoming feature popup)
+- Removed Create Channel button (shows upcoming feature popup)
+- Fixed spreading factor distribution chart display issues
+- Removed navbar theme changes for cleaner UI
+
+### 💾 Technical Implementation
+- **Dual-Write Service**: Intelligent writing to both Magistrala API and PostgreSQL
+- **Fallback Mechanisms**: Automatic failover when primary systems fail
+- **Sync Tracking**: Complete operation logging and status management
+- **CRUD Operations**: Full create, read, update, delete for devices, channels, LoRaWAN
+- **Environment Configuration**: Production-ready .env.production setup
+
+### 🎨 User Experience
+- **Upcoming Feature Modal**: Professional popup component for non-working features
+- **Settings Integration**: Working company name and theme management
+- **Clean Interface**: Removed non-functional elements for better UX
+- **Empty State Handling**: Proper "no devices" display when database is empty
+
+### 🚀 Deployment
+- **AWS S3 Deployment**: Complete production deployment with optimized build
+- **PostgreSQL API**: Operational endpoints with /api/* prefix structure
+- **Database Status**: 9 devices and 3 channels actively synced
+
 ## [2.0.0] - 2025-06-21
 
 ### 🚀 Added

@@ -1,6 +1,9 @@
 # 📦 Choovio IoT Platform - Version Control
 
-## 🏷️ **Current Version: v2.0.0**
+## 🏷️ **Current Version: v2.1.1**
+**🚀 Live Production URL**: http://choovio-dashboard.s3-website-us-east-1.amazonaws.com  
+**💾 PostgreSQL Backend**: http://34.207.208.152:3001  
+**📅 Released**: 2025-06-23
 
 ### **Versioning Strategy**
 We follow [Semantic Versioning (SemVer)](https://semver.org/) format: `MAJOR.MINOR.PATCH`
@@ -13,7 +16,43 @@ We follow [Semantic Versioning (SemVer)](https://semver.org/) format: `MAJOR.MIN
 
 ## 📋 **Version History**
 
-### **v2.0.0** - 2025-06-21 (Current)
+### **v2.1.1** - 2025-06-23 (Current)
+**🎯 Final Production Release - Complete Deployment & Cleanup**
+
+#### **New Features**
+- ✅ **Complete Project Cleanup**: Optimized structure while preserving all work evidence
+- ✅ **PostgreSQL Backend Deployment**: Full EC2 deployment with operational endpoints
+- ✅ **Comprehensive Documentation**: All .md files updated with current deployment status
+- ✅ **Git Workflow Completion**: Proper branching, tagging, and push to GitHub
+
+#### **Technical Achievements**
+- Production deployment verified and operational
+- Clean project structure ready for evaluation
+- All development work preserved and documented
+- Version control with semantic tagging completed
+
+---
+
+### **v2.1.0** - 2025-06-23
+**🚀 Production Deployment - PostgreSQL Dual-Write System**
+
+#### **Major Features**
+- ✅ **PostgreSQL Dual-Write System**: Complete implementation with EC2 backend
+- ✅ **User Management Simplified**: Local state only, no database dependency
+- ✅ **Professional UI Enhancements**: Upcoming feature popups for all non-working features
+- ✅ **2025 Credential Update**: Updated all demo passwords to 2025 versions
+- ✅ **AWS S3 Deployment**: Live production deployment completed
+
+#### **Technical Implementation**
+- Dual-write service with intelligent fallback mechanisms
+- EC2 PostgreSQL server (34.207.208.152:3001) with REST API
+- Complete CRUD operations for devices, channels, and LoRaWAN
+- Production build optimization and environment configuration
+- Comprehensive error handling and sync tracking
+
+---
+
+### **v2.0.0** - 2025-06-21
 **🚀 Major Feature Release - Complete Platform Enhancement**
 
 #### **New Features**

@@ -1,49 +1,70 @@
 # Magistrala IoT Platform - Choovio Pilot Project
 
-> **Customized IoT Platform with React Dashboard and AWS Deployment**
+> **Production-Ready IoT Platform with PostgreSQL Dual-Write System**
 
 [![React](https://img.shields.io/badge/React-18.2.0-blue.svg)](https://reactjs.org/)
-[![AWS](https://img.shields.io/badge/AWS-Cloud%20Ready-orange.svg)](https://aws.amazon.com/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![AWS](https://img.shields.io/badge/AWS-Deployed-orange.svg)](http://choovio-dashboard.s3-website-us-east-1.amazonaws.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-EC2-blue.svg)](http://34.207.208.152:3001)
+[![Version](https://img.shields.io/badge/Version-v2.1.1-green.svg)](https://github.com/RutwikPatel13/magistrala-choovio-pilot/releases)
 
-## 🚀 Project Overview
+## 🚀 Live Application
 
-This repository contains a fully customized Magistrala IoT platform with a modern React dashboard, white-label branding capabilities, and production-ready AWS deployment configuration. Developed as a pilot project to demonstrate IoT platform customization and cloud deployment expertise.
+**🌐 Production URL**: http://choovio-dashboard.s3-website-us-east-1.amazonaws.com  
+**💾 PostgreSQL Backend**: http://34.207.208.152:3001  
+**📊 Status**: ✅ Fully Deployed & Operational  
+**🔑 Demo Login**: `admin@choovio.com` / `ChoovioAdmin2025!`
+
+## 📋 Project Overview
+
+This repository contains a comprehensive Magistrala IoT platform with a modern React dashboard, complete PostgreSQL dual-write backup system, and production AWS deployment. The project demonstrates advanced full-stack development with enterprise-grade reliability features including automatic fallback mechanisms and real-time data synchronization.
 
 ## ✨ Key Features
 
-### 🎨 **White-Label Dashboard**
-- **Custom Branding**: Choovio color scheme and logo
-- **Responsive Design**: Mobile-first React application
-- **Real-time Analytics**: Live IoT data visualization
-- **Device Management**: Complete CRUD operations
+### 🎯 **Production-Ready Application**
+- **Live Deployment**: Fully operational on AWS S3 + EC2
+- **PostgreSQL Dual-Write**: Automatic backup and sync system
+- **Professional UI**: Clean interface with upcoming feature notifications
+- **2025 Credentials**: Updated demo login system
 
-### ☁️ **Cloud-Ready Deployment**
-- **AWS Infrastructure**: ECS, RDS, ElastiCache, ALB
-- **Infrastructure as Code**: Terraform configuration
-- **Auto-scaling**: Production-ready scalability
-- **Security**: Enterprise-grade security configuration
+### 💾 **Advanced Data Management**
+- **Dual-Write System**: Writes to both Magistrala API and PostgreSQL
+- **Fallback Mechanisms**: Automatic failover when primary system fails
+- **Real-time Sync**: Live data synchronization across systems
+- **EC2 PostgreSQL**: Dedicated database server (34.207.208.152:3001)
 
-### 🤖 **AI-Assisted Development**
-- **Comprehensive Documentation**: Detailed AI usage tracking
-- **Code Quality**: Industry best practices implementation
-- **Rapid Development**: 60% faster implementation
+### 🎨 **Enhanced User Experience**
+- **Device Management**: Complete CRUD operations with database backup
+- **User Management**: Simplified local state management
+- **Settings Integration**: Working company branding and theme system
+- **Professional Popups**: Upcoming feature notifications for non-working features
+
+### ☁️ **Cloud Deployment**
+- **AWS S3**: Static website hosting with global CDN
+- **EC2 Backend**: PostgreSQL database server deployment
+- **Production Ready**: Optimized builds and environment configuration
+- **Scalable Architecture**: Ready for enterprise deployment
 
 ## 📁 Repository Structure
 
 ```
 ├── 📊 custom-dashboard/          # React Dashboard Application
-│   ├── src/components/          # Reusable UI components
-│   ├── src/pages/              # Main application pages
-│   ├── src/styles/             # Theming and branding
-│   └── package.json            # Dependencies
-├── ☁️ aws-deployment/           # AWS Infrastructure
-│   ├── terraform/              # Infrastructure as Code
-│   ├── scripts/               # Deployment automation
-│   └── cloudformation/        # Alternative deployment
-├── 📋 PROJECT_REPORT.md         # Comprehensive technical report
-├── 🤖 AI_ASSISTANCE_DOCUMENTATION.md # AI usage documentation
-└── 🐳 docker/                  # Container configurations
+│   ├── src/services/          # API services & dual-write system
+│   ├── src/pages/             # Application pages (Device, User, Settings)
+│   ├── src/components/        # Reusable UI components
+│   ├── src/contexts/          # React contexts for state management
+│   └── .env.production        # Production environment configuration
+├── 💾 postgresql-backend/       # PostgreSQL API Server
+│   ├── server.js             # Express server with REST endpoints
+│   ├── docker-compose.yml    # PostgreSQL container setup
+│   └── scripts/              # Database setup and migration scripts
+├── ☁️ aws-deployment/           # AWS Deployment Configurations
+│   └── cloudfront-config.json # CDN configuration
+├── 🚀 deployment/              # Deployment Automation Scripts
+│   ├── deploy-auto.sh         # Automated S3 deployment
+│   └── deploy-to-s3.sh        # Manual S3 deployment
+├── 📋 IMPLEMENTATION_SUMMARY.md  # Technical implementation details
+├── 📊 PROJECT_STATUS_REPORT.md  # Project progress and status
+└── 📝 Various .md files        # Comprehensive documentation
 ```
 
 ## 🛠️ Technology Stack
