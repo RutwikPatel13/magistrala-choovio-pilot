@@ -181,39 +181,13 @@ const choovioTheme = {
 };
 ```
 
-## 📈 Performance Metrics
-
-- **Build Size**: 187KB (optimized)
-- **Page Load**: <2 seconds
-- **API Response**: <500ms average
-- **Real-time Updates**: <50ms latency
-- **Scalability**: Auto-scaling 2-10 instances
-
-## 🔒 Security Features
-
-- **Authentication**: JWT token-based auth
-- **Authorization**: Role-based access control
-- **Network**: VPC with private subnets
-- **Encryption**: SSL/TLS and data encryption
-- **Monitoring**: Security event logging
-
-## 🤖 AI Assistance Integration
-
-This project extensively leveraged AI assistance for:
-
-- **Code Development** (35%): Component creation, theming
-- **Debugging & Analysis** (40%): Issue diagnosis, optimization
-- **DevOps & Deployment** (15%): Infrastructure guidance
-- **Documentation** (10%): Report generation, tracking
-
-See [AI_ASSISTANCE_DOCUMENTATION.md](docs/AI_ASSISTANCE_DOCUMENTATION.md) for detailed usage.
 
 ## 📚 Documentation
 
 **📋 [Complete Documentation Index](docs/README.md)**
 
 ### **Quick Access:**
-- **[📊 Final Project Report](docs/FINAL_PROJECT_REPORT.md)** - Complete project completion report
+- **[📊 Final Submission Report](https://github.com/RutwikPatel13/magistrala-choovio-pilot/blob/main/docs/choovio-submission-report.md)** - Complete project submission report
 - **[🧪 Testing Guide](docs/TESTING.md)** - Comprehensive testing scenarios
 - **[🚀 Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Step-by-step deployment
 - **[📈 Version History](docs/VERSION.md)** - Current status and releases
@@ -230,52 +204,9 @@ All project documentation has been organized in the [`docs/`](docs/) folder with
 - ✅ **Scalable Infrastructure**: Growth-ready platform
 - ✅ **Comprehensive Documentation**: Complete project docs
 
-## 🚀 Future Enhancements
+## 👤 Developer
 
-### Short-term (1-3 months)
-- Mobile React Native app
-- Advanced ML analytics
-- Multi-tenant support
-- Enhanced security features
-
-### Long-term (6-12 months)
-- Edge computing integration
-- Blockchain device authentication
-- Global multi-region deployment
-- Enterprise compliance features
-
-## 📝 Development Workflow
-
-```bash
-# Git workflow used
-main branch: Production-ready releases
-├── customization-branch: Feature development
-└── development: Active development and testing
-
-# Key commits
-3d31ec4b7 - Complete project documentation and final deliverables
-6a5030a42 - Implement Choovio branding and fix React deployment
-f996d1184 - Initial commit: Magistrala IoT platform setup
-```
-
-## 🤝 Contributing
-
-This project demonstrates technical capabilities and serves as a foundation for IoT platform development. For collaboration or questions:
-
-- **Developer**: Rutwik Patel
-- **Email**: rutwikpatel1313@gmail.com
-- **LinkedIn**: [Connect on LinkedIn]
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Magistrala Team** - For the excellent open-source IoT platform
-- **React Community** - For the amazing frontend ecosystem
-- **AWS** - For reliable cloud infrastructure
-- **AI Assistance** - For accelerating development productivity
+**Rutwik Patel**
 
 ---
 

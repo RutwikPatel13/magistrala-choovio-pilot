@@ -5,6 +5,7 @@ This folder contains comprehensive documentation for the Magistrala IoT Platform
 ## 📋 Table of Contents
 
 ### 🚀 **Project Overview & Reports**
+- [**choovio-submission-report.md**](https://github.com/RutwikPatel13/magistrala-choovio-pilot/blob/main/docs/choovio-submission-report.md) - Final submission report
 - [**FINAL_PROJECT_REPORT.md**](FINAL_PROJECT_REPORT.md) - Complete project completion report
 - [PROJECT_REPORT.md](PROJECT_REPORT.md) - Detailed technical implementation report
 - [FINAL_PROJECT_SUMMARY.md](FINAL_PROJECT_SUMMARY.md) - Executive summary of achievements
