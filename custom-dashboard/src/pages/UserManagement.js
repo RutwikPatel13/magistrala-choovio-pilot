@@ -18,7 +18,8 @@ import {
   FiKey,
   FiSearch
 } from 'react-icons/fi';
-import magistralaApi from '../services/magistralaApi';
+// Removed magistralaApi import - using local state only
+import UpcomingFeatureModal from '../components/UpcomingFeatureModal';
 
 const Container = styled.div`
   padding: 2rem;
@@ -335,88 +336,16 @@ const UserStat = styled.div`
   }
 `;
 
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-`;
-
-const Button = styled.button`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  ${props => props.variant === 'primary' ? `
-    background: linear-gradient(135deg, #2C5282, #3182CE);
-    color: white;
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(44, 82, 130, 0.3);
-    }
-  ` : `
-    background: #f7fafc;
-    color: #4a5568;
-    border: 1px solid #e2e8f0;
-    &:hover {
-      background: #edf2f7;
-    }
-  `}
-`;
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [showUpcomingFeature, setShowUpcomingFeature] = useState(false);
+  const [upcomingFeatureName, setUpcomingFeatureName] = useState('');
   const [filters, setFilters] = useState({
     search: '',
     role: '',
     status: ''
-  });
-
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    role: 'user',
-    status: 'active'
   });
 
   const [stats, setStats] = useState({
@@ -430,57 +359,22 @@ const UserManagement = () => {
     loadUsers();
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      
-      // Try to get users from Magistrala API
-      try {
-        const response = await magistralaApi.getUsers();
-        const apiUsers = response.users || [];
-        
-        if (apiUsers.length > 0) {
-          const enhancedUsers = apiUsers.map(user => ({
-            ...user,
-            role: user.role || 'user',
-            status: user.status || 'active',
-            lastLogin: user.lastLogin || new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-            devices: Math.floor(Math.random() * 20),
-            sessions: Math.floor(Math.random() * 5),
-            dataUsage: (Math.random() * 100).toFixed(1)
-          }));
-          setUsers(enhancedUsers);
-        } else {
-          throw new Error('No users returned from API');
-        }
-      } catch (apiError) {
-        console.log('API failed, using mock data:', apiError);
-        const mockUsers = generateMockUsers();
-        setUsers(mockUsers);
-      }
-      
-      // Calculate stats
-      const totalUsers = users.length || generateMockUsers().length;
-      setStats({
-        totalUsers,
-        activeUsers: Math.floor(totalUsers * 0.8),
-        newUsers: Math.floor(totalUsers * 0.1),
-        onlineUsers: Math.floor(totalUsers * 0.3)
-      });
-      
-    } catch (error) {
-      console.error('Failed to load users:', error);
-      const mockUsers = generateMockUsers();
-      setUsers(mockUsers);
-      setStats({
-        totalUsers: mockUsers.length,
-        activeUsers: Math.floor(mockUsers.length * 0.8),
-        newUsers: Math.floor(mockUsers.length * 0.1),
-        onlineUsers: Math.floor(mockUsers.length * 0.3)
-      });
-    } finally {
-      setLoading(false);
-    }
+  const loadUsers = () => {
+    setLoading(true);
+    
+    // Using local mock data only
+    const mockUsers = generateMockUsers();
+    setUsers(mockUsers);
+    
+    // Calculate stats from mock data
+    setStats({
+      totalUsers: mockUsers.length,
+      activeUsers: Math.floor(mockUsers.length * 0.8),
+      newUsers: Math.floor(mockUsers.length * 0.1),
+      onlineUsers: Math.floor(mockUsers.length * 0.3)
+    });
+    
+    setLoading(false);
   };
 
   const generateMockUsers = () => {
@@ -521,75 +415,23 @@ const UserManagement = () => {
   });
 
   const handleCreateUser = () => {
-    setEditingUser(null);
-    setFormData({
-      name: '',
-      email: '',
-      role: 'user',
-      status: 'active'
-    });
-    setShowModal(true);
+    setUpcomingFeatureName('Add User');
+    setShowUpcomingFeature(true);
   };
 
   const handleEditUser = (user) => {
-    setEditingUser(user);
-    setFormData({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status
-    });
-    setShowModal(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingUser) {
-        // Update existing user
-        const updatedUsers = users.map(user => 
-          user.id === editingUser.id 
-            ? { ...user, ...formData }
-            : user
-        );
-        setUsers(updatedUsers);
-      } else {
-        // Create new user
-        const newUser = {
-          id: `user_${Date.now()}`,
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-          status: formData.status,
-          lastLogin: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          devices: 0,
-          sessions: 0,
-          dataUsage: '0.0',
-          permissions: formData.role === 'admin' ? ['all'] : formData.role === 'manager' ? ['read', 'write'] : ['read']
-        };
-        setUsers(prev => [...prev, newUser]);
-      }
-      
-      setShowModal(false);
-    } catch (error) {
-      console.error('Failed to save user:', error);
-      alert('Failed to save user. Please try again.');
-    }
+    setUpcomingFeatureName('Edit User');
+    setShowUpcomingFeature(true);
   };
 
   const handleDeleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(prev => prev.filter(user => user.id !== userId));
-    }
+    setUpcomingFeatureName('Delete User');
+    setShowUpcomingFeature(true);
   };
 
   const handleToggleStatus = (userId) => {
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' }
-        : user
-    ));
+    setUpcomingFeatureName('Toggle User Status');
+    setShowUpcomingFeature(true);
   };
 
   const formatLastLogin = (timestamp) => {
@@ -769,70 +611,11 @@ const UserManagement = () => {
         </UsersList>
       </UsersContainer>
 
-      {showModal && (
-        <Modal onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <ModalContent>
-            <h2>{editingUser ? 'Edit User' : 'Add New User'}</h2>
-            <Form onSubmit={handleSubmit}>
-              <FormGroup>
-                <Label>Full Name</Label>
-                <Input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  placeholder="Enter full name"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Email Address</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  placeholder="Enter email address"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Role</Label>
-                <Select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                >
-                  <option value="user">User</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Administrator</option>
-                  <option value="viewer">Viewer</option>
-                </Select>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                </Select>
-              </FormGroup>
-
-              <ButtonGroup>
-                <Button type="button" onClick={() => setShowModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary">
-                  {editingUser ? 'Update' : 'Create'} User
-                </Button>
-              </ButtonGroup>
-            </Form>
-          </ModalContent>
-        </Modal>
-      )}
+      <UpcomingFeatureModal 
+        isOpen={showUpcomingFeature}
+        onClose={() => setShowUpcomingFeature(false)}
+        featureName={upcomingFeatureName}
+      />
     </Container>
   );
 };

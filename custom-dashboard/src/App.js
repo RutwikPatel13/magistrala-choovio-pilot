@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import styled, { ThemeProvider } from 'styled-components';
+import styled, { ThemeProvider as StyledThemeProvider } from 'styled-components';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import Login from './components/Login';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -18,23 +20,14 @@ import DataStorage from './pages/DataStorage';
 import UserManagement from './pages/UserManagement';
 import Security from './pages/Security';
 import Profile from './pages/Profile';
-import { brandPresets } from './styles/theme';
-
-// Use Choovio theme with fallback to original colors
-const theme = {
-  ...brandPresets.choovio.colors,
-  primary: '#2C5282',
-  secondary: '#ED8936',
-  background: '#F7FAFC',
-  text: '#2D3748',
-  white: '#FFFFFF',
-  shadow: '0 4px 12px rgba(44, 82, 130, 0.12)'
-};
 
 const AppContainer = styled.div`
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, ${props => props.theme.primary} 0%, ${props => props.theme.secondary} 100%);
+  background: ${props => props.theme.mode === 'dark' 
+    ? 'linear-gradient(135deg, #1A202C 0%, #2D3748 100%)' 
+    : 'linear-gradient(135deg, #2C5282 0%, #ED8936 100%)'};
+  transition: background 0.3s ease;
 `;
 
 const MainContent = styled.div`
@@ -52,35 +45,38 @@ const ContentArea = styled.main`
 // Main app content component
 const AppContent = () => {
   const { isAuthenticated, loading, loginWithTokens } = useAuth();
+  const { theme } = useTheme();
 
   if (loading) {
     return (
-      <ThemeProvider theme={theme}>
+      <StyledThemeProvider theme={theme}>
         <div style={{ 
           display: 'flex', 
           justifyContent: 'center', 
           alignItems: 'center', 
           height: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
+          background: theme.mode === 'dark' 
+            ? 'linear-gradient(135deg, #1A202C 0%, #2D3748 100%)' 
+            : 'linear-gradient(135deg, #2C5282 0%, #ED8936 100%)',
+          color: theme.text,
           fontSize: '1.2rem'
         }}>
           Loading...
         </div>
-      </ThemeProvider>
+      </StyledThemeProvider>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <ThemeProvider theme={theme}>
+      <StyledThemeProvider theme={theme}>
         <Login onLoginSuccess={(result) => loginWithTokens(result.access_token, result.user, result.refresh_token)} />
-      </ThemeProvider>
+      </StyledThemeProvider>
     );
   }
 
   return (
-    <ThemeProvider theme={theme}>
+    <StyledThemeProvider theme={theme}>
       <Router>
         <AppContainer>
           <Sidebar />
@@ -106,15 +102,19 @@ const AppContent = () => {
           {process.env.NODE_ENV === 'development' && <TestStatus />}
         </AppContainer>
       </Router>
-    </ThemeProvider>
+    </StyledThemeProvider>
   );
 };
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <SettingsProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
+    </SettingsProvider>
   );
 }
 

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { FiBell, FiUser, FiSearch, FiSettings, FiMail, FiLogOut } from 'react-icons/fi';
+import { FiBell, FiUser, FiSearch, FiSettings, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 const HeaderContainer = styled.header`
-  background: ${props => props.theme.white};
+  background: #ffffff;
   padding: 1rem 2rem;
-  box-shadow: ${props => props.theme.shadow};
+  box-shadow: 0 4px 12px rgba(44, 82, 130, 0.12);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -20,7 +21,7 @@ const Logo = styled.div`
   gap: 10px;
   
   h1 {
-    color: ${props => props.theme.primary};
+    color: #2C5282;
     font-size: 1.5rem;
     font-weight: bold;
   }
@@ -28,7 +29,7 @@ const Logo = styled.div`
   .logo-icon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(45deg, ${props => props.theme.primary}, ${props => props.theme.secondary});
+    background: linear-gradient(45deg, #2C5282, #ED8936);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -54,7 +55,7 @@ const SearchBar = styled.div`
     transition: border-color 0.3s ease;
     
     &:focus {
-      border-color: ${props => props.theme.primary};
+      border-color: #2C5282;
     }
   }
   
@@ -264,7 +265,8 @@ const Header = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout, isDemo } = useAuth();
+  const { user, logout } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const searchData = [
@@ -395,8 +397,8 @@ const Header = () => {
   return (
     <HeaderContainer>
       <Logo>
-        <div className="logo-icon">C</div>
-        <h1>Choovio IoT</h1>
+        <div className="logo-icon">{settings.companyName.charAt(0).toUpperCase()}</div>
+        <h1>{settings.companyName}</h1>
       </Logo>
       
       <SearchBar onClick={(e) => e.stopPropagation()}>

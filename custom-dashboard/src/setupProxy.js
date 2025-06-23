@@ -6,7 +6,7 @@ module.exports = function(app) {
   app.use(
     '/api/v1/things',
     createProxyMiddleware({
-      target: 'http://54.85.135.193:9006',
+      target: 'http://100.27.187.76:9006',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',
@@ -40,7 +40,7 @@ module.exports = function(app) {
   app.use(
     '/api/v1/channels',
     createProxyMiddleware({
-      target: 'http://54.85.135.193:9005',
+      target: 'http://100.27.187.76:9005',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',
@@ -66,7 +66,7 @@ module.exports = function(app) {
   app.use(
     '/api/v1/users',
     createProxyMiddleware({
-      target: 'http://54.85.135.193:9002',
+      target: 'http://100.27.187.76:9002',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',
@@ -92,7 +92,7 @@ module.exports = function(app) {
   app.use(
     '/api/v1/readers',
     createProxyMiddleware({
-      target: 'http://54.85.135.193:9009',
+      target: 'http://100.27.187.76:9009',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',
@@ -118,7 +118,7 @@ module.exports = function(app) {
   app.use(
     '/api/v1/http',
     createProxyMiddleware({
-      target: 'http://54.85.135.193:8008',
+      target: 'http://100.27.187.76:8008',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',
@@ -144,7 +144,7 @@ module.exports = function(app) {
   app.use(
     '/api/v1',
     createProxyMiddleware({
-      target: 'http://54.85.135.193',
+      target: 'http://100.27.187.76',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',
@@ -167,7 +167,7 @@ module.exports = function(app) {
   app.use(
     ['/users', '/things', '/channels', '/http', '/readers', '/tokens'],
     createProxyMiddleware({
-      target: 'http://54.85.135.193',
+      target: 'http://100.27.187.76',
       changeOrigin: true,
       secure: false,
       logLevel: 'info',

@@ -42,7 +42,7 @@ The Choovio LoRaWAN Dashboard has been successfully developed and deployed with:
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   S3 Static     │────▶│  SuperMQ Backend │────▶│ Docker Services │
-│   React App     │     │  (54.85.135.193) │     │  (Internal)     │
+│   React App     │     │  (100.27.187.76) │     │  (Internal)     │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
      Public                 EC2 Instance           Not Exposed
 ```

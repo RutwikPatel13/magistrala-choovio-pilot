@@ -23,6 +23,7 @@ import {
   FiZap
 } from 'react-icons/fi';
 import magistralaApi from '../services/magistralaApi';
+import dualWriteService from '../services/dualWriteService';
 import LoRaWANService from '../services/lorawanService';
 
 const Container = styled.div`
@@ -402,9 +403,10 @@ const LoRaWANManagement = () => {
 
   const initializeLoRaWANService = () => {
     try {
-      const service = new LoRaWANService(magistralaApi);
+      console.log('🔄 Initializing LoRaWAN Service with dual-write support...');
+      const service = new LoRaWANService(dualWriteService);
       setLorawanService(service);
-      console.log('✅ LoRaWAN Service initialized');
+      console.log('✅ LoRaWAN Service initialized with dual-write support');
     } catch (error) {
       console.error('❌ Failed to initialize LoRaWAN Service:', error);
     }
@@ -552,10 +554,6 @@ const LoRaWANManagement = () => {
           <FiRadio style={{ marginRight: '0.5rem' }} />
           LoRaWAN Devices ({devices.length})
         </CardTitle>
-        <ActionButton primary onClick={handleAddDevice}>
-          <FiPlus size={16} />
-          Add Device
-        </ActionButton>
       </CardHeader>
 
       {devices.length === 0 ? (
@@ -567,10 +565,6 @@ const LoRaWANManagement = () => {
           <div className="description">
             Add your first LoRaWAN device to start monitoring your network
           </div>
-          <ActionButton primary onClick={handleAddDevice}>
-            <FiPlus size={16} />
-            Add LoRaWAN Device
-          </ActionButton>
         </EmptyState>
       ) : (
         <DeviceTable>
@@ -830,10 +824,6 @@ const LoRaWANManagement = () => {
           <ActionButton onClick={handleRefresh}>
             <FiRefreshCw size={16} />
             Refresh
-          </ActionButton>
-          <ActionButton primary onClick={activeTab === 'devices' ? handleAddDevice : handleAddGateway}>
-            <FiPlus size={16} />
-            {activeTab === 'devices' ? 'Add Device' : 'Add Gateway'}
           </ActionButton>
         </HeaderActions>
       </Header>

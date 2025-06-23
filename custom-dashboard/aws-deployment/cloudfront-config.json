@@ -1,0 +1,56 @@
+{
+  "CallerReference": "magistrala-dashboard-cloudfront",
+  "Comment": "Magistrala Dashboard with API proxy",
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-choovio-dashboard",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "MinTTL": 0,
+    "ForwardedValues": {
+      "QueryString": false,
+      "Cookies": {
+        "Forward": "none"
+      }
+    },
+    "Compress": true
+  },
+  "Origins": [
+    {
+      "Id": "S3-choovio-dashboard",
+      "DomainName": "choovio-dashboard.s3-website-us-east-1.amazonaws.com",
+      "CustomOriginConfig": {
+        "HTTPPort": 80,
+        "HTTPSPort": 443,
+        "OriginProtocolPolicy": "http-only"
+      }
+    },
+    {
+      "Id": "Magistrala-Backend",
+      "DomainName": "100.27.187.76",
+      "CustomOriginConfig": {
+        "HTTPPort": 80,
+        "HTTPSPort": 443,
+        "OriginProtocolPolicy": "http-only"
+      }
+    }
+  ],
+  "CacheBehaviors": [
+    {
+      "PathPattern": "/api/*",
+      "TargetOriginId": "Magistrala-Backend",
+      "ViewerProtocolPolicy": "redirect-to-https",
+      "MinTTL": 0,
+      "DefaultTTL": 0,
+      "MaxTTL": 0,
+      "ForwardedValues": {
+        "QueryString": true,
+        "Headers": ["Authorization", "Content-Type"],
+        "Cookies": {
+          "Forward": "none"
+        }
+      },
+      "Compress": false
+    }
+  ],
+  "Enabled": true,
+  "PriceClass": "PriceClass_100"
+}

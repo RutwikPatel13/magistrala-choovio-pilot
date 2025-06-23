@@ -8,6 +8,11 @@ class AuthService {
     this.baseURL = baseURL;
     this.debugMode = process.env.REACT_APP_DEBUG_MODE === 'true';
     
+    // Check if we're running in production from S3 and need CORS proxy
+    this.needsCorsProxy = process.env.NODE_ENV === 'production' && 
+                         (window.location.origin.includes('s3-website') || 
+                          window.location.origin.includes('cloudfront'));
+    
     // Working endpoints discovered from testing
     this.workingEndpoints = [
       // Primary working endpoints
@@ -36,6 +41,13 @@ class AuthService {
   // Enhanced authentication method with working endpoints
   async authenticate(identity, password, domainId = null) {
     this.debugLog('Starting authentication with working endpoints', { identity, domainId });
+    
+    // Check if we're running from S3 and demo mode is enabled - skip API calls due to CORS
+    const isDemoModeEnabled = process.env.REACT_APP_ENABLE_DEMO_MODE === 'true';
+    if (this.needsCorsProxy && isDemoModeEnabled) {
+      this.debugLog('Running from S3 with CORS restrictions, using demo mode directly');
+      return await this.tryDemoAuthentication(identity, password);
+    }
     
     // Try working endpoints first
     const sortedEndpoints = this.authEndpoints.sort((a, b) => (a.priority || 99) - (b.priority || 99));
@@ -152,12 +164,12 @@ class AuthService {
     }
 
     const demoCredentials = {
-      'admin@choovio.com': { password: 'admin123', name: 'Admin User', role: 'admin' },
-      'admin': { password: 'admin123', name: 'Admin User', role: 'admin' },
-      'user@choovio.com': { password: 'user123', name: 'Demo User', role: 'user' },
-      'user': { password: 'user123', name: 'Demo User', role: 'user' },
-      'choovio@example.com': { password: 'choovio123', name: 'Choovio Admin', role: 'admin' },
-      'demo@magistrala.com': { password: 'demo123', name: 'Demo User', role: 'user' }
+      'admin@choovio.com': { password: 'ChoovioAdmin2025!', name: 'Admin User', role: 'admin' },
+      'admin': { password: 'ChoovioAdmin2025!', name: 'Admin User', role: 'admin' },
+      'user@choovio.com': { password: 'ChoovioUser2025!', name: 'Demo User', role: 'user' },
+      'user': { password: 'ChoovioUser2025!', name: 'Demo User', role: 'user' },
+      'choovio@example.com': { password: 'ChoovioDemo2025!', name: 'Choovio Admin', role: 'admin' },
+      'demo@magistrala.com': { password: 'MagistralaDemo2025!', name: 'Demo User', role: 'user' }
     };
 
     const demoUser = demoCredentials[identity.toLowerCase()];

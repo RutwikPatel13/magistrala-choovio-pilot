@@ -21,6 +21,12 @@ class MagistralaAPI {
     this.enableMTLS = process.env.REACT_APP_ENABLE_MTLS === 'true';
     this.defaultDomainId = process.env.REACT_APP_DEFAULT_DOMAIN_ID;
     
+    // Check if we're running from S3 and need CORS handling
+    this.needsCorsProxy = process.env.NODE_ENV === 'production' && 
+                         (window.location.origin.includes('s3-website') || 
+                          window.location.origin.includes('cloudfront'));
+    this.isDemoModeEnabled = process.env.REACT_APP_ENABLE_DEMO_MODE === 'true';
+    
     // Working API endpoints discovered from backend analysis
     this.apiVersion = 'v1';
     this.usersURL = `${this.baseURL}/api/${this.apiVersion}/users`;
@@ -1037,7 +1043,7 @@ class MagistralaAPI {
         }
       }
       
-      console.log(`🖺 Deleting thing ${deviceId} from Magistrala...`);
+      console.log(`🗑️ Deleting thing ${deviceId} from Magistrala...`);
       
       const endpoints = [
         { url: `${this.thingsURL}/${deviceId}`, type: 'proxy' },
@@ -1082,10 +1088,40 @@ class MagistralaAPI {
     }
   }
 
+  // Alias for compatibility with dualWriteService
+  async deleteThing(thingId) {
+    return await this.deleteDevice(thingId);
+  }
+
+  // Additional methods for Things management with REST API compatibility
+  async getThings(filters = {}) {
+    try {
+      const devicesResponse = await this.getDevices(0, 1000);
+      return devicesResponse.things || [];
+    } catch (error) {
+      console.error('Get things error:', error);
+      throw error;
+    }
+  }
+
+  async createThing(thingData) {
+    return await this.createDevice(thingData);
+  }
+
+  async updateThing(thingId, updateData) {
+    return await this.updateDevice(thingId, updateData);
+  }
+
   // Channels Management with proper Magistrala API integration
   async getChannels(offset = 0, limit = 100) {
     if (!this.token) {
       throw new Error('Authentication required. Please login first.');
+    }
+
+    // If running from S3 with CORS issues and demo mode enabled, use demo data
+    if (this.needsCorsProxy && this.isDemoModeEnabled) {
+      console.log('🔍 Using demo channels data due to CORS restrictions...');
+      return this.getDemoChannels(offset, limit);
     }
 
     try {
@@ -1182,10 +1218,19 @@ class MagistralaAPI {
       }
 
       // Demo mode fallback for channels (also when API calls fail and authentication is disabled)
-      if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
-        console.log('🧪 Real Channels API failed, generating demo data...');
-        
-        const demoChannels = [
+      return this.getDemoChannels(offset, limit);
+    } catch (error) {
+      console.error('Error fetching channels:', error);
+      throw error;
+    }
+  }
+
+  // Demo channels data for CORS/API failure scenarios
+  getDemoChannels(offset = 0, limit = 100) {
+    if (process.env.REACT_APP_ENABLE_DEMO_MODE === 'true' && (this.token?.includes('demo_token') || this.isDemoMode)) {
+      console.log('🧪 Using demo channels data...');
+      
+      const demoChannels = [
           {
             id: 'ch_demo_001',
             name: 'Temperature Sensors',
@@ -1231,6 +1276,7 @@ class MagistralaAPI {
         ];
         
         // Save demo channels to persistent storage
+        const userId = this.getUserId() || 'demo_user';
         dataStorage.saveChannels(demoChannels, userId);
         
         return {
@@ -1242,10 +1288,6 @@ class MagistralaAPI {
       }
       
       throw new Error('All Channels API endpoints failed. Please check your Magistrala instance.');
-    } catch (error) {
-      console.error('Get channels error:', error);
-      throw error;
-    }
   }
   
   // Helper methods for channel data transformation

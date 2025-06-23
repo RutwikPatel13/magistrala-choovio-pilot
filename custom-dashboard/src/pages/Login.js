@@ -314,12 +314,12 @@ const Login = () => {
     if (type === 'admin') {
       setFormData({
         email: 'admin@choovio.com',
-        password: 'admin123'
+        password: 'ChoovioAdmin2025!'
       });
     } else {
       setFormData({
         email: 'user@choovio.com',
-        password: 'user123'
+        password: 'ChoovioUser2025!'
       });
     }
   };
@@ -333,7 +333,7 @@ const Login = () => {
         </Logo>
         
         <Title>Welcome Back</Title>
-        <Subtitle>Sign in to your IoT Dashboard</Subtitle>
+        <Subtitle>Sign in to your IoT Dashboard v2.1</Subtitle>
 
         <DemoCredentials>
           <div className="demo-title">
@@ -347,10 +347,28 @@ const Login = () => {
             • Or users created via the signup page (stored locally)
           </div>
           <div className="demo-item">
-            <strong>Demo fallback:</strong> admin@choovio.com / admin123
+            <strong>Demo Admin:</strong> admin@choovio.com / ChoovioAdmin2025!
             <button 
               type="button" 
               onClick={() => fillDemoCredentials('admin')}
+              style={{ 
+                marginLeft: '8px', 
+                background: 'none', 
+                border: 'none', 
+                color: '#2C5282', 
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: '0.8rem'
+              }}
+            >
+              (Use)
+            </button>
+          </div>
+          <div className="demo-item">
+            <strong>Demo User:</strong> user@choovio.com / ChoovioUser2025!
+            <button 
+              type="button" 
+              onClick={() => fillDemoCredentials('user')}
               style={{ 
                 marginLeft: '8px', 
                 background: 'none', 
@@ -369,7 +387,8 @@ const Login = () => {
             • JWT token management with automatic refresh<br/>
             • Multi-endpoint authentication (proxy and direct)<br/>
             • Secure token storage and expiration handling<br/>
-            • Fallback to demo mode for testing
+            • Fallback to demo mode for testing<br/>
+            • Updated: June 2025
           </div>
         </DemoCredentials>
 
