@@ -17,6 +17,7 @@ import {
   FiFile,
   FiArchive
 } from 'react-icons/fi';
+import UpcomingFeatureModal from '../components/UpcomingFeatureModal';
 
 const Container = styled.div`
   padding: 2rem;
@@ -310,6 +311,8 @@ const DataStorage = () => {
   const [datasets, setDatasets] = useState([]);
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showUpcomingFeature, setShowUpcomingFeature] = useState(false);
+  const [upcomingFeatureName, setUpcomingFeatureName] = useState('');
 
   useEffect(() => {
     loadStorageData();
@@ -415,23 +418,28 @@ const DataStorage = () => {
   };
 
   const handleDownloadDataset = (dataset) => {
-    alert(`Downloading dataset: ${dataset.name}\nSize: ${formatBytes(dataset.size)}\nThis would start a dataset export process.`);
+    setUpcomingFeatureName('Download Dataset');
+    setShowUpcomingFeature(true);
   };
 
   const handleDeleteDataset = (datasetId) => {
-    if (window.confirm('Are you sure you want to delete this dataset? This action cannot be undone.')) {
-      setDatasets(prev => prev.filter(d => d.id !== datasetId));
-    }
+    setUpcomingFeatureName('Delete Dataset');
+    setShowUpcomingFeature(true);
   };
 
   const handleCreateBackup = () => {
-    alert('Creating new backup...\nThis would start a full system backup process.');
+    setUpcomingFeatureName('Create Backup');
+    setShowUpcomingFeature(true);
   };
 
   const handleRestoreBackup = (backup) => {
-    if (window.confirm(`Restore from backup: ${backup.name}?\nThis will restore the system to the state from ${formatDate(backup.createdAt)}.`)) {
-      alert('Backup restoration started. This process may take several minutes.');
-    }
+    setUpcomingFeatureName('Restore Backup');
+    setShowUpcomingFeature(true);
+  };
+
+  const handleStorageSettings = () => {
+    setUpcomingFeatureName('Storage Settings');
+    setShowUpcomingFeature(true);
   };
 
   const storagePercentage = (storageStats.usedStorage / storageStats.totalStorage) * 100;
@@ -458,7 +466,7 @@ const DataStorage = () => {
           <ActionButton variant="secondary" onClick={handleCreateBackup}>
             <FiUpload /> Create Backup
           </ActionButton>
-          <ActionButton>
+          <ActionButton onClick={handleStorageSettings}>
             <FiSettings /> Storage Settings
           </ActionButton>
         </ActionButtons>
@@ -589,6 +597,12 @@ const DataStorage = () => {
           </BackupSection>
         </div>
       </ContentGrid>
+      
+      <UpcomingFeatureModal 
+        isOpen={showUpcomingFeature}
+        onClose={() => setShowUpcomingFeature(false)}
+        featureName={upcomingFeatureName}
+      />
     </Container>
   );
 };

@@ -12,6 +12,7 @@ import {
   FiLink
 } from 'react-icons/fi';
 import magistralaApi from '../services/magistralaApi';
+import dualWriteService from '../services/dualWriteService';
 
 const Container = styled.div`
   padding: 2rem;
@@ -342,9 +343,11 @@ const Channels = () => {
   const loadChannels = async () => {
     try {
       setLoading(true);
-      const response = await magistralaApi.getChannels();
-      const channelsData = response.channels || generateMockChannels();
+      console.log('🔄 Loading channels from dual-write service...');
+      const response = await dualWriteService.getChannels();
+      const channelsData = Array.isArray(response) ? response : (response.channels || generateMockChannels());
       setChannels(channelsData);
+      console.log('✅ Loaded channels via dual-write:', channelsData.length);
       
       // Calculate stats
       setStats({
@@ -494,7 +497,12 @@ const Channels = () => {
       };
 
       if (editingChannel) {
-        // Update existing channel
+        // Update existing channel using dual-write service
+        console.log('🔄 Updating channel via dual-write service:', editingChannel.id, channelData);
+        const result = await dualWriteService.updateChannel(editingChannel.id, channelData);
+        console.log('✅ Channel updated via dual-write:', result);
+        
+        // Update local state
         const updatedChannels = channels.map(ch => 
           ch.id === editingChannel.id 
             ? { ...ch, ...channelData, protocol: formData.protocol, topic: formData.topic, description: formData.description }
@@ -502,9 +510,14 @@ const Channels = () => {
         );
         setChannels(updatedChannels);
       } else {
-        // Create new channel
+        // Create new channel using dual-write service
+        console.log('🔄 Creating channel via dual-write service:', channelData);
+        const result = await dualWriteService.createChannel(channelData);
+        console.log('✅ Channel created via dual-write:', result);
+        
+        // Add to local state with the returned ID
         const newChannel = {
-          id: `ch_${Date.now()}`,
+          id: result?.id || `ch_${Date.now()}`,
           name: formData.name,
           protocol: formData.protocol,
           topic: formData.topic,
@@ -519,15 +532,28 @@ const Channels = () => {
       }
       
       setShowModal(false);
+      
+      // Reload channels to get updated data
+      await loadChannels();
     } catch (error) {
       console.error('Failed to save channel:', error);
-      alert('Failed to save channel. Please check the metadata format.');
+      alert('Failed to save channel. Please check the metadata format and try again.');
     }
   };
 
-  const handleDeleteChannel = (channelId) => {
+  const handleDeleteChannel = async (channelId) => {
     if (window.confirm('Are you sure you want to delete this channel?')) {
-      setChannels(prev => prev.filter(ch => ch.id !== channelId));
+      try {
+        console.log('🔄 Deleting channel via dual-write service:', channelId);
+        await dualWriteService.deleteChannel(channelId);
+        console.log('✅ Channel deleted via dual-write');
+        
+        // Update local state
+        setChannels(prev => prev.filter(ch => ch.id !== channelId));
+      } catch (error) {
+        console.error('Failed to delete channel:', error);
+        alert('Failed to delete channel. Please try again.');
+      }
     }
   };
 
@@ -559,9 +585,6 @@ const Channels = () => {
     <Container>
       <Header>
         <Title>Channel Management</Title>
-        <ActionButton onClick={handleCreateChannel}>
-          <FiPlus /> Create Channel
-        </ActionButton>
       </Header>
 
       <StatsGrid>

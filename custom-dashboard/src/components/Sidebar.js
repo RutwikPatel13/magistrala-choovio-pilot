@@ -18,7 +18,7 @@ const SidebarContainer = styled.nav`
   width: 250px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  box-shadow: ${props => props.theme.shadow};
+  box-shadow: 0 4px 12px rgba(44, 82, 130, 0.12);
   padding: 2rem 0;
   display: flex;
   flex-direction: column;
@@ -29,19 +29,19 @@ const NavItem = styled(NavLink)`
   align-items: center;
   gap: 12px;
   padding: 1rem 2rem;
-  color: ${props => props.theme.text};
+  color: #2D3748;
   text-decoration: none;
   transition: all 0.3s ease;
   position: relative;
   
   &:hover {
     background: rgba(102, 126, 234, 0.1);
-    color: ${props => props.theme.primary};
+    color: #2C5282;
   }
   
   &.active {
     background: rgba(102, 126, 234, 0.15);
-    color: ${props => props.theme.primary};
+    color: #2C5282;
     font-weight: 600;
     
     &::before {
@@ -51,7 +51,7 @@ const NavItem = styled(NavLink)`
       top: 0;
       bottom: 0;
       width: 4px;
-      background: ${props => props.theme.primary};
+      background: #2C5282;
     }
   }
   

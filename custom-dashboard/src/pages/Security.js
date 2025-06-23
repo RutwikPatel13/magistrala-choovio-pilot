@@ -19,6 +19,7 @@ import {
   FiDatabase,
   FiWifi
 } from 'react-icons/fi';
+import UpcomingFeatureModal from '../components/UpcomingFeatureModal';
 
 const Container = styled.div`
   padding: 2rem;
@@ -360,6 +361,8 @@ const Security = () => {
   const [securityLogs, setSecurityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showApiKey, setShowApiKey] = useState({});
+  const [showUpcomingFeature, setShowUpcomingFeature] = useState(false);
+  const [upcomingFeatureName, setUpcomingFeatureName] = useState('');
 
   useEffect(() => {
     loadSecurityData();
@@ -469,16 +472,13 @@ const Security = () => {
   };
 
   const handleGenerateApiKey = () => {
-    const newKey = {
-      id: `key_${Date.now()}`,
-      name: 'New API Key',
-      key: `mg_api_new_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
-      permissions: ['read'],
-      lastUsed: null,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    };
-    setApiKeys(prev => [...prev, newKey]);
+    setUpcomingFeatureName('Generate API Key');
+    setShowUpcomingFeature(true);
+  };
+
+  const handleSecuritySettings = () => {
+    setUpcomingFeatureName('Security Settings');
+    setShowUpcomingFeature(true);
   };
 
   const formatTimestamp = (timestamp) => {
@@ -524,7 +524,7 @@ const Security = () => {
           <ActionButton variant="secondary" onClick={handleGenerateApiKey}>
             <FiKey /> Generate API Key
           </ActionButton>
-          <ActionButton>
+          <ActionButton onClick={handleSecuritySettings}>
             <FiSettings /> Security Settings
           </ActionButton>
         </ActionButtons>
@@ -766,6 +766,11 @@ const Security = () => {
           </LogsList>
         </SectionContent>
       </Section>
+      <UpcomingFeatureModal 
+        isOpen={showUpcomingFeature}
+        onClose={() => setShowUpcomingFeature(false)}
+        featureName={upcomingFeatureName}
+      />
     </Container>
   );
 };

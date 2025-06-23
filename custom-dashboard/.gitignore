@@ -1,0 +1,96 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Production build
+build/
+dist/
+*.tgz
+
+# Environment variables (keeping .env.production for reference)
+.env
+.env.local
+.env.development.local
+.env.test.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.code-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and debugging
+*.log
+npm_start.log
+serve.log
+build_output.log
+debug.log
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+.cache/
+
+# Coverage and testing
+coverage/
+.nyc_output/
+.coverage/
+*.lcov
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Deployment and build artifacts (excluding important ones)
+choovio-dashboard-build.zip
+
+# Development and testing artifacts not needed for evaluation
+test-output/
+cypress/
+jest-results/
+playwright-report/
+
+# Local development files
+local-config.json
+dev-notes.md
+scratch/
+experiments/
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Security and sensitive files (excluding deployment configs)
+*.pem
+*.key
+.secrets/
+auth-config.json
+
+# Keep these files for evaluation:
+# - Custom dashboard source code
+# - PostgreSQL backend implementation  
+# - Database schema and services
+# - AWS deployment configurations
+# - Documentation files (README.md, etc.)
+# - Environment production config
+# - Docker configurations

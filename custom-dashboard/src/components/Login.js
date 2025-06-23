@@ -225,12 +225,12 @@ const Login = ({ onLoginSuccess }) => {
     if (type === 'admin') {
       setCredentials({
         identity: 'admin@choovio.com',
-        password: 'admin123'
+        password: 'ChoovioAdmin2025!'
       });
     } else {
       setCredentials({
         identity: 'user@choovio.com',
-        password: 'user123'
+        password: 'ChoovioUser2025!'
       });
     }
   };
@@ -288,14 +288,50 @@ const Login = ({ onLoginSuccess }) => {
         
         <DefaultCredentials>
           <h4>Demo Credentials:</h4>
-          <p onClick={() => fillDemoCredentials('admin')} style={{ cursor: 'pointer', color: '#007bff' }}>
-            👤 admin@choovio.com / admin123
-          </p>
-          <p onClick={() => fillDemoCredentials('user')} style={{ cursor: 'pointer', color: '#007bff' }}>
-            👤 user@choovio.com / user123
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#6c757d', fontFamily: 'Monaco, Menlo, monospace' }}>
+              👤 admin@choovio.com / ChoovioAdmin2025!
+            </p>
+            <button 
+              type="button" 
+              onClick={() => fillDemoCredentials('admin')}
+              style={{ 
+                background: '#007bff', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px', 
+                padding: '4px 8px', 
+                fontSize: '0.7rem', 
+                cursor: 'pointer',
+                marginLeft: '8px'
+              }}
+            >
+              Use
+            </button>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#6c757d', fontFamily: 'Monaco, Menlo, monospace' }}>
+              👤 user@choovio.com / ChoovioUser2025!
+            </p>
+            <button 
+              type="button" 
+              onClick={() => fillDemoCredentials('user')}
+              style={{ 
+                background: '#007bff', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px', 
+                padding: '4px 8px', 
+                fontSize: '0.7rem', 
+                cursor: 'pointer',
+                marginLeft: '8px'
+              }}
+            >
+              Use
+            </button>
+          </div>
           <small style={{ color: '#999', fontSize: '0.75rem' }}>
-            Click to auto-fill credentials
+            Click "Use" buttons to auto-fill credentials
           </small>
         </DefaultCredentials>
       </LoginCard>

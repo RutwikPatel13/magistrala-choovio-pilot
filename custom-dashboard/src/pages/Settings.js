@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { 
   FiSave, 
-  FiUpload, 
   FiEdit3, 
-  FiShield,
   FiBell,
-  FiGlobe,
   FiDatabase,
-  FiKey
+  FiSun,
+  FiMoon,
+  FiClock
 } from 'react-icons/fi';
+import { useSettings } from '../contexts/SettingsContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SettingsContainer = styled.div`
   padding: 0;
@@ -109,24 +110,6 @@ const FormRow = styled.div`
   gap: 1rem;
 `;
 
-const ColorPicker = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  
-  .color-option {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    cursor: pointer;
-    border: 3px solid transparent;
-    transition: border-color 0.3s ease;
-    
-    &.active {
-      border-color: ${props => props.theme.text};
-    }
-  }
-`;
 
 const ToggleSwitch = styled.div`
   display: flex;
@@ -197,96 +180,137 @@ const SaveButton = styled.button`
   }
 `;
 
-const FileUpload = styled.div`
-  border: 2px dashed #ddd;
+const SuccessMessage = styled.div`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #48bb78;
+  color: white;
+  padding: 1rem 1.5rem;
   border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.3s ease;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
   
-  &:hover {
-    border-color: ${props => props.theme.primary};
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
   }
   
-  .upload-icon {
-    font-size: 2rem;
-    color: #666;
-    margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .success-icon {
+    font-size: 1.2rem;
+  }
+`;
+
+const ThemeToggle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f9f9f9;
+  margin: 1rem 0;
+  
+  .theme-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    .theme-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: ${props => props.isDark ? 'linear-gradient(45deg, #4a5568, #2d3748)' : 'linear-gradient(45deg, #f7fafc, #edf2f7)'};
+      color: ${props => props.isDark ? '#f7fafc' : '#2d3748'};
+      font-size: 1.2rem;
+    }
+    
+    .theme-text {
+      .theme-title {
+        font-weight: 600;
+        color: ${props => props.theme.text};
+        margin-bottom: 4px;
+      }
+      
+      .theme-description {
+        font-size: 0.8rem;
+        color: #666;
+      }
+    }
   }
   
-  .upload-text {
-    color: #666;
+  .theme-switch {
+    position: relative;
+    width: 60px;
+    height: 32px;
+    background: ${props => props.isDark ? '#4299e1' : '#e2e8f0'};
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    
+    .theme-slider {
+      position: absolute;
+      top: 2px;
+      left: ${props => props.isDark ? '30px' : '2px'};
+      width: 28px;
+      height: 28px;
+      background: white;
+      border-radius: 50%;
+      transition: left 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      
+      svg {
+        font-size: 14px;
+        color: ${props => props.isDark ? '#1a202c' : '#f6ad55'};
+      }
+    }
   }
 `;
 
 const Settings = () => {
-  const [settings, setSettings] = useState({
-    company: {
-      name: 'Your Company Name',
-      logo: null,
-      primaryColor: '#667eea',
-      secondaryColor: '#764ba2'
-    },
-    notifications: {
-      email: true,
-      push: true,
-      alerts: true,
-      reports: false
-    },
-    api: {
-      endpoint: 'https://api.magistrala.io',
-      timeout: 30000,
-      retries: 3
-    },
-    security: {
-      twoFactor: false,
-      sessionTimeout: 3600,
-      apiAccess: true
-    }
-  });
+  const { settings, updateNestedSetting, formatTimestamp } = useSettings();
+  const { isDarkMode, toggleTheme, companyName, updateCompanyName, adminEmail, updateAdminEmail, timeZone, updateTimeZone } = useTheme();
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [localSettings, setLocalSettings] = useState({});
 
-  const colorOptions = [
-    '#667eea', '#764ba2', '#3498db', '#2ecc71', 
-    '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'
-  ];
-
+  // Initialize local settings from contexts
   useEffect(() => {
-    // Load saved settings from localStorage
-    try {
-      const savedSettings = localStorage.getItem('choovio_settings');
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        setSettings(prev => ({ ...prev, ...parsedSettings }));
-        
-        // Apply saved theme
-        if (parsedSettings.company?.primaryColor) {
-          document.documentElement.style.setProperty('--primary-color', parsedSettings.company.primaryColor);
-        }
-        if (parsedSettings.company?.secondaryColor) {
-          document.documentElement.style.setProperty('--secondary-color', parsedSettings.company.secondaryColor);
-        }
-        if (parsedSettings.company?.name) {
-          document.title = `${parsedSettings.company.name} IoT Dashboard`;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load saved settings:', error);
-    }
-  }, []);
+    setLocalSettings({
+      companyName: companyName,
+      adminEmail: adminEmail,
+      timeZone: timeZone,
+      isDarkMode: isDarkMode,
+      notifications: settings.notifications || {},
+      dataRetention: settings.dataRetention || {}
+    });
+  }, [companyName, adminEmail, timeZone, isDarkMode, settings]);
 
-  const handleToggle = (section, key) => {
-    setSettings(prev => ({
+  const handleInputChange = (key, value) => {
+    setLocalSettings(prev => ({
       ...prev,
-      [section]: {
-        ...prev[section],
-        [key]: !prev[section][key]
-      }
+      [key]: value
     }));
   };
 
-  const handleInputChange = (section, key, value) => {
-    setSettings(prev => ({
+  const handleNestedInputChange = (section, key, value) => {
+    setLocalSettings(prev => ({
       ...prev,
       [section]: {
         ...prev[section],
@@ -297,135 +321,179 @@ const Settings = () => {
 
   const handleSave = () => {
     try {
-      // Save to localStorage for persistence
-      localStorage.setItem('choovio_settings', JSON.stringify(settings));
-      alert('Settings saved successfully!');
-      console.log('Settings saved:', settings);
-      
-      // Apply theme changes if color was updated
-      if (settings.company.primaryColor || settings.company.secondaryColor) {
-        document.documentElement.style.setProperty('--primary-color', settings.company.primaryColor);
-        document.documentElement.style.setProperty('--secondary-color', settings.company.secondaryColor);
+      // Update context states
+      if (localSettings.companyName !== companyName) {
+        updateCompanyName(localSettings.companyName);
+      }
+      if (localSettings.adminEmail !== adminEmail) {
+        updateAdminEmail(localSettings.adminEmail);
+      }
+      if (localSettings.timeZone !== timeZone) {
+        updateTimeZone(localSettings.timeZone);
       }
       
-      // Apply company name if changed
-      if (settings.company.name) {
-        document.title = `${settings.company.name} IoT Dashboard`;
-      }
+      // Update settings context
+      updateNestedSetting('notifications', 'systemAlerts', localSettings.notifications.systemAlerts);
+      updateNestedSetting('notifications', 'emailNotifications', localSettings.notifications.emailNotifications);
+      updateNestedSetting('notifications', 'pushNotifications', localSettings.notifications.pushNotifications);
+      updateNestedSetting('notifications', 'weeklyReports', localSettings.notifications.weeklyReports);
+      
+      updateNestedSetting('dataRetention', 'autoBackup', localSettings.dataRetention.autoBackup);
+      updateNestedSetting('dataRetention', 'backupFrequency', localSettings.dataRetention.backupFrequency);
+      updateNestedSetting('dataRetention', 'retentionPeriod', localSettings.dataRetention.retentionPeriod);
+      updateNestedSetting('dataRetention', 'compressionEnabled', localSettings.dataRetention.compressionEnabled);
+      updateNestedSetting('dataRetention', 'encryptBackups', localSettings.dataRetention.encryptBackups);
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error('Failed to save settings:', error);
       alert('Failed to save settings. Please try again.');
     }
   };
 
+  // Get list of common timezones
+  const commonTimezones = [
+    'UTC',
+    'America/New_York',
+    'America/Chicago', 
+    'America/Denver',
+    'America/Los_Angeles',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Berlin',
+    'Asia/Tokyo',
+    'Asia/Shanghai',
+    'Australia/Sydney'
+  ];
+
   return (
     <SettingsContainer>
+      {showSuccess && (
+        <SuccessMessage>
+          <FiSave className="success-icon" />
+          Settings saved successfully!
+        </SuccessMessage>
+      )}
+      
       <PageHeader>
         <h1>Settings</h1>
-        <p>Customize your Magistrala IoT platform experience</p>
+        <p>Configure your IoT platform preferences and behavior</p>
       </PageHeader>
 
       <SettingsGrid>
+        {/* Company Branding */}
         <SettingsCard>
           <div className="card-header">
             <div className="card-icon" style={{ background: 'linear-gradient(45deg, #667eea, #764ba2)' }}>
               <FiEdit3 />
             </div>
-            <div className="card-title">Branding & Appearance</div>
+            <div className="card-title">Company Information</div>
           </div>
           <div className="card-description">
-            Customize the look and feel of your IoT dashboard to match your brand identity.
+            Update your company details that appear throughout the dashboard.
           </div>
 
           <FormGroup>
             <label>Company Name</label>
             <input
               type="text"
-              value={settings.company.name}
-              onChange={(e) => handleInputChange('company', 'name', e.target.value)}
+              value={localSettings.companyName || ''}
+              onChange={(e) => handleInputChange('companyName', e.target.value)}
               placeholder="Enter your company name"
             />
+            <small style={{ color: '#666', fontSize: '0.8rem' }}>
+              This name will appear in the navbar and page titles
+            </small>
           </FormGroup>
 
           <FormGroup>
-            <label>Company Logo</label>
-            <FileUpload>
-              <FiUpload className="upload-icon" />
-              <div className="upload-text">
-                Click to upload logo or drag and drop
-                <br />
-                <small>Recommended: PNG, JPG (max 2MB)</small>
-              </div>
-            </FileUpload>
+            <label>Admin Email</label>
+            <input
+              type="email"
+              value={localSettings.adminEmail || ''}
+              onChange={(e) => handleInputChange('adminEmail', e.target.value)}
+              placeholder="admin@company.com"
+            />
+            <small style={{ color: '#666', fontSize: '0.8rem' }}>
+              Primary contact email for administrative notifications
+            </small>
           </FormGroup>
-
-          <FormRow>
-            <FormGroup>
-              <label>Primary Color</label>
-              <input
-                type="text"
-                value={settings.company.primaryColor}
-                onChange={(e) => handleInputChange('company', 'primaryColor', e.target.value)}
-              />
-              <ColorPicker>
-                {colorOptions.map(color => (
-                  <div
-                    key={color}
-                    className={`color-option ${settings.company.primaryColor === color ? 'active' : ''}`}
-                    style={{ background: color }}
-                    onClick={() => handleInputChange('company', 'primaryColor', color)}
-                  />
-                ))}
-              </ColorPicker>
-            </FormGroup>
-
-            <FormGroup>
-              <label>Secondary Color</label>
-              <input
-                type="text"
-                value={settings.company.secondaryColor}
-                onChange={(e) => handleInputChange('company', 'secondaryColor', e.target.value)}
-              />
-            </FormGroup>
-          </FormRow>
         </SettingsCard>
 
+        {/* Theme Settings */}
         <SettingsCard>
           <div className="card-header">
-            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #2ecc71, #27ae60)' }}>
+            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #4299e1, #63b3ed)' }}>
+              {isDarkMode ? <FiMoon /> : <FiSun />}
+            </div>
+            <div className="card-title">Appearance</div>
+          </div>
+          <div className="card-description">
+            Choose between light and dark themes for your dashboard interface.
+          </div>
+
+          <ThemeToggle isDark={isDarkMode}>
+            <div className="theme-info">
+              <div className="theme-icon">
+                {isDarkMode ? <FiMoon /> : <FiSun />}
+              </div>
+              <div className="theme-text">
+                <div className="theme-title">
+                  {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                </div>
+                <div className="theme-description">
+                  {isDarkMode ? 'Dark theme for low-light environments' : 'Light theme for bright environments'}
+                </div>
+              </div>
+            </div>
+            <div className="theme-switch" onClick={toggleTheme}>
+              <div className="theme-slider">
+                {isDarkMode ? <FiMoon /> : <FiSun />}
+              </div>
+            </div>
+          </ThemeToggle>
+        </SettingsCard>
+
+        {/* Time Zone Settings */}
+        <SettingsCard>
+          <div className="card-header">
+            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #38b2ac, #4fd1c7)' }}>
+              <FiClock />
+            </div>
+            <div className="card-title">Time Zone</div>
+          </div>
+          <div className="card-description">
+            Set your preferred time zone for displaying timestamps throughout the platform.
+          </div>
+
+          <FormGroup>
+            <label>Time Zone</label>
+            <select
+              value={localSettings.timeZone || 'UTC'}
+              onChange={(e) => handleInputChange('timeZone', e.target.value)}
+            >
+              {commonTimezones.map(tz => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+            <small style={{ color: '#666', fontSize: '0.8rem' }}>
+              Current time: {formatTimestamp(new Date(), 'full')}
+            </small>
+          </FormGroup>
+        </SettingsCard>
+
+        {/* Notifications */}
+        <SettingsCard>
+          <div className="card-header">
+            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #48bb78, #68d391)' }}>
               <FiBell />
             </div>
             <div className="card-title">Notifications</div>
           </div>
           <div className="card-description">
-            Configure how and when you receive notifications about your IoT devices and data.
+            Control how and when you receive notifications about system events.
           </div>
-
-          <ToggleSwitch>
-            <div className="toggle-info">
-              <div className="toggle-title">Email Notifications</div>
-              <div className="toggle-description">Receive alerts and updates via email</div>
-            </div>
-            <div 
-              className={`toggle ${settings.notifications.email ? 'active' : ''}`}
-              onClick={() => handleToggle('notifications', 'email')}
-            >
-              <div className={`toggle-slider ${settings.notifications.email ? 'active' : ''}`} />
-            </div>
-          </ToggleSwitch>
-
-          <ToggleSwitch>
-            <div className="toggle-info">
-              <div className="toggle-title">Push Notifications</div>
-              <div className="toggle-description">Real-time browser notifications</div>
-            </div>
-            <div 
-              className={`toggle ${settings.notifications.push ? 'active' : ''}`}
-              onClick={() => handleToggle('notifications', 'push')}
-            >
-              <div className={`toggle-slider ${settings.notifications.push ? 'active' : ''}`} />
-            </div>
-          </ToggleSwitch>
 
           <ToggleSwitch>
             <div className="toggle-info">
@@ -433,10 +501,36 @@ const Settings = () => {
               <div className="toggle-description">Critical system and device alerts</div>
             </div>
             <div 
-              className={`toggle ${settings.notifications.alerts ? 'active' : ''}`}
-              onClick={() => handleToggle('notifications', 'alerts')}
+              className={`toggle ${localSettings.notifications?.systemAlerts ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('notifications', 'systemAlerts', !localSettings.notifications?.systemAlerts)}
             >
-              <div className={`toggle-slider ${settings.notifications.alerts ? 'active' : ''}`} />
+              <div className={`toggle-slider ${localSettings.notifications?.systemAlerts ? 'active' : ''}`} />
+            </div>
+          </ToggleSwitch>
+
+          <ToggleSwitch>
+            <div className="toggle-info">
+              <div className="toggle-title">Email Notifications</div>
+              <div className="toggle-description">Receive alerts and updates via email</div>
+            </div>
+            <div 
+              className={`toggle ${localSettings.notifications?.emailNotifications ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('notifications', 'emailNotifications', !localSettings.notifications?.emailNotifications)}
+            >
+              <div className={`toggle-slider ${localSettings.notifications?.emailNotifications ? 'active' : ''}`} />
+            </div>
+          </ToggleSwitch>
+
+          <ToggleSwitch>
+            <div className="toggle-info">
+              <div className="toggle-title">Push Notifications</div>
+              <div className="toggle-description">Browser push notifications for real-time alerts</div>
+            </div>
+            <div 
+              className={`toggle ${localSettings.notifications?.pushNotifications ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('notifications', 'pushNotifications', !localSettings.notifications?.pushNotifications)}
+            >
+              <div className={`toggle-slider ${localSettings.notifications?.pushNotifications ? 'active' : ''}`} />
             </div>
           </ToggleSwitch>
 
@@ -446,103 +540,89 @@ const Settings = () => {
               <div className="toggle-description">Automated weekly analytics reports</div>
             </div>
             <div 
-              className={`toggle ${settings.notifications.reports ? 'active' : ''}`}
-              onClick={() => handleToggle('notifications', 'reports')}
+              className={`toggle ${localSettings.notifications?.weeklyReports ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('notifications', 'weeklyReports', !localSettings.notifications?.weeklyReports)}
             >
-              <div className={`toggle-slider ${settings.notifications.reports ? 'active' : ''}`} />
+              <div className={`toggle-slider ${localSettings.notifications?.weeklyReports ? 'active' : ''}`} />
             </div>
           </ToggleSwitch>
         </SettingsCard>
 
+        {/* Data Retention */}
         <SettingsCard>
           <div className="card-header">
-            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #3498db, #2980b9)' }}>
-              <FiGlobe />
+            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #ed8936, #f6ad55)' }}>
+              <FiDatabase />
             </div>
-            <div className="card-title">API Configuration</div>
+            <div className="card-title">Data Retention & Backup</div>
           </div>
           <div className="card-description">
-            Configure API endpoints and connection settings for your Magistrala platform.
-          </div>
-
-          <FormGroup>
-            <label>API Endpoint</label>
-            <input
-              type="url"
-              value={settings.api.endpoint}
-              onChange={(e) => handleInputChange('api', 'endpoint', e.target.value)}
-              placeholder="https://api.magistrala.io"
-            />
-          </FormGroup>
-
-          <FormRow>
-            <FormGroup>
-              <label>Request Timeout (ms)</label>
-              <input
-                type="number"
-                value={settings.api.timeout}
-                onChange={(e) => handleInputChange('api', 'timeout', parseInt(e.target.value))}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>Max Retries</label>
-              <input
-                type="number"
-                value={settings.api.retries}
-                onChange={(e) => handleInputChange('api', 'retries', parseInt(e.target.value))}
-                min="0"
-                max="10"
-              />
-            </FormGroup>
-          </FormRow>
-        </SettingsCard>
-
-        <SettingsCard>
-          <div className="card-header">
-            <div className="card-icon" style={{ background: 'linear-gradient(45deg, #e74c3c, #c0392b)' }}>
-              <FiShield />
-            </div>
-            <div className="card-title">Security Settings</div>
-          </div>
-          <div className="card-description">
-            Manage security features and access controls for your IoT platform.
+            Configure data backup and retention policies for your IoT data.
           </div>
 
           <ToggleSwitch>
             <div className="toggle-info">
-              <div className="toggle-title">Two-Factor Authentication</div>
-              <div className="toggle-description">Add an extra layer of security to your account</div>
+              <div className="toggle-title">Automatic Backup</div>
+              <div className="toggle-description">Enable automated data backups</div>
             </div>
             <div 
-              className={`toggle ${settings.security.twoFactor ? 'active' : ''}`}
-              onClick={() => handleToggle('security', 'twoFactor')}
+              className={`toggle ${localSettings.dataRetention?.autoBackup ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('dataRetention', 'autoBackup', !localSettings.dataRetention?.autoBackup)}
             >
-              <div className={`toggle-slider ${settings.security.twoFactor ? 'active' : ''}`} />
+              <div className={`toggle-slider ${localSettings.dataRetention?.autoBackup ? 'active' : ''}`} />
             </div>
           </ToggleSwitch>
 
-          <FormGroup>
-            <label>Session Timeout (seconds)</label>
-            <input
-              type="number"
-              value={settings.security.sessionTimeout}
-              onChange={(e) => handleInputChange('security', 'sessionTimeout', parseInt(e.target.value))}
-              min="300"
-              max="86400"
-            />
-          </FormGroup>
+          {localSettings.dataRetention?.autoBackup && (
+            <FormRow>
+              <FormGroup>
+                <label>Backup Frequency</label>
+                <select
+                  value={localSettings.dataRetention?.backupFrequency || 'daily'}
+                  onChange={(e) => handleNestedInputChange('dataRetention', 'backupFrequency', e.target.value)}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </FormGroup>
+
+              <FormGroup>
+                <label>Retention Period (days)</label>
+                <input
+                  type="number"
+                  value={localSettings.dataRetention?.retentionPeriod || 90}
+                  onChange={(e) => handleNestedInputChange('dataRetention', 'retentionPeriod', parseInt(e.target.value))}
+                  min="7"
+                  max="365"
+                />
+              </FormGroup>
+            </FormRow>
+          )}
 
           <ToggleSwitch>
             <div className="toggle-info">
-              <div className="toggle-title">API Access</div>
-              <div className="toggle-description">Allow external API access to your data</div>
+              <div className="toggle-title">Compress Backups</div>
+              <div className="toggle-description">Enable compression to save storage space</div>
             </div>
             <div 
-              className={`toggle ${settings.security.apiAccess ? 'active' : ''}`}
-              onClick={() => handleToggle('security', 'apiAccess')}
+              className={`toggle ${localSettings.dataRetention?.compressionEnabled ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('dataRetention', 'compressionEnabled', !localSettings.dataRetention?.compressionEnabled)}
             >
-              <div className={`toggle-slider ${settings.security.apiAccess ? 'active' : ''}`} />
+              <div className={`toggle-slider ${localSettings.dataRetention?.compressionEnabled ? 'active' : ''}`} />
+            </div>
+          </ToggleSwitch>
+
+          <ToggleSwitch>
+            <div className="toggle-info">
+              <div className="toggle-title">Encrypt Backups</div>
+              <div className="toggle-description">Encrypt backup files for enhanced security</div>
+            </div>
+            <div 
+              className={`toggle ${localSettings.dataRetention?.encryptBackups ? 'active' : ''}`}
+              onClick={() => handleNestedInputChange('dataRetention', 'encryptBackups', !localSettings.dataRetention?.encryptBackups)}
+            >
+              <div className={`toggle-slider ${localSettings.dataRetention?.encryptBackups ? 'active' : ''}`} />
             </div>
           </ToggleSwitch>
         </SettingsCard>

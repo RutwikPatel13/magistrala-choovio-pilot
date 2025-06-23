@@ -17,6 +17,7 @@ import {
   FiCheckCircle,
   FiXCircle
 } from 'react-icons/fi';
+import UpcomingFeatureModal from '../components/UpcomingFeatureModal';
 
 const ProfileContainer = styled.div`
   padding: 2rem;
@@ -369,6 +370,8 @@ const Profile = () => {
     confirmPassword: ''
   });
   const [saveSuccess, setSaveSuccess] = useState('');
+  const [showUpcomingFeature, setShowUpcomingFeature] = useState(false);
+  const [upcomingFeatureName, setUpcomingFeatureName] = useState('');
 
   useEffect(() => {
     // Load user data from localStorage or API
@@ -517,7 +520,10 @@ const Profile = () => {
             <Avatar>
               {getInitials(user.name)}
             </Avatar>
-            <AvatarUpload>
+            <AvatarUpload onClick={() => {
+              setUpcomingFeatureName('Avatar Upload');
+              setShowUpcomingFeature(true);
+            }}>
               <FiCamera size={16} />
             </AvatarUpload>
           </AvatarSection>
@@ -741,6 +747,12 @@ const Profile = () => {
           </Section>
         </MainContent>
       </ProfileLayout>
+      
+      <UpcomingFeatureModal 
+        isOpen={showUpcomingFeature}
+        onClose={() => setShowUpcomingFeature(false)}
+        featureName={upcomingFeatureName}
+      />
     </ProfileContainer>
   );
 };

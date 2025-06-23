@@ -18,6 +18,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { FiDownload, FiCalendar, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+import UpcomingFeatureModal from '../components/UpcomingFeatureModal';
 
 const AnalyticsContainer = styled.div`
   padding: 0;
@@ -153,6 +154,8 @@ const FullWidthChart = styled(ChartCard)`
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState('24h');
+  const [showUpcomingFeature, setShowUpcomingFeature] = useState(false);
+  const [upcomingFeatureName, setUpcomingFeatureName] = useState('');
   const [analyticsData, setAnalyticsData] = useState({
     metrics: {
       totalMessages: 125847,
@@ -208,17 +211,8 @@ const Analytics = () => {
   }, [timeRange]);
 
   const handleExport = () => {
-    const csvData = analyticsData.timeSeriesData.map(item => 
-      `${item.time},${item.messages},${item.errors},${item.responseTime}`
-    ).join('\n');
-    
-    const blob = new Blob([`Time,Messages,Errors,Response Time\n${csvData}`], 
-      { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics-${timeRange}.csv`;
-    a.click();
+    setUpcomingFeatureName('Export Analytics Data');
+    setShowUpcomingFeature(true);
   };
 
   const COLORS = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12'];
@@ -348,6 +342,12 @@ const Analytics = () => {
           </ResponsiveContainer>
         </ChartCard>
       </ChartsGrid>
+      
+      <UpcomingFeatureModal 
+        isOpen={showUpcomingFeature}
+        onClose={() => setShowUpcomingFeature(false)}
+        featureName={upcomingFeatureName}
+      />
     </AnalyticsContainer>
   );
 };

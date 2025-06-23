@@ -83,20 +83,34 @@ class LoRaWANService {
         ...deviceData.metadata
       };
 
-      const device = {
-        name: deviceData.name,
-        metadata: loraMetadata
+      // Prepare LoRaWAN device data for dual-write service
+      const lorawanDeviceData = {
+        name: deviceData.name || `LoRaWAN-${deviceData.devEUI}`,
+        description: deviceData.description || `LoRaWAN device with DevEUI: ${deviceData.devEUI}`,
+        dev_eui: deviceData.devEUI,
+        app_eui: deviceData.appEUI || deviceData.joinEUI,
+        app_key: deviceData.appKey,
+        dev_addr: deviceData.devAddr,
+        nwk_s_key: deviceData.nwkSKey,
+        app_s_key: deviceData.appSKey,
+        frequency_plan: deviceData.region || 'EU868',
+        class: deviceData.deviceClass || 'A',
+        supports_join: deviceData.activationType !== 'ABP',
+        metadata: {
+          ...loraMetadata,
+          createdVia: 'lorawan-service'
+        }
       };
 
-      const createdDevice = await this.api.createDevice(device);
+      const createdDevice = await this.dualWriteService.createLoRaWANDevice(lorawanDeviceData);
       
       // If successful, try to setup LoRaWAN routing
       if (createdDevice.id) {
         await this.setupLoRaWANRouting(createdDevice, deviceData);
       }
       
-      console.log('✅ LoRaWAN device created successfully');
-      return this.enhanceLoRaWANDevice(createdDevice);
+      console.log('✅ LoRaWAN device created successfully via dual-write');
+      return this.enhanceLoRaWANDeviceFromDB(createdDevice);
     } catch (error) {
       console.error('❌ Error creating LoRaWAN device:', error);
       throw error;
@@ -105,21 +119,35 @@ class LoRaWANService {
 
   async updateLoRaWANDevice(deviceId, updates) {
     try {
-      // Enhance updates with LoRaWAN metadata
-      const loraUpdates = {
-        ...updates,
+      console.log('🔄 Updating LoRaWAN device via dual-write service:', deviceId, updates);
+      
+      // Prepare LoRaWAN device updates for dual-write service
+      const lorawanUpdates = {
+        name: updates.name,
+        description: updates.description,
+        dev_eui: updates.devEUI,
+        app_eui: updates.appEUI || updates.joinEUI,
+        app_key: updates.appKey,
+        dev_addr: updates.devAddr,
+        nwk_s_key: updates.nwkSKey,
+        app_s_key: updates.appSKey,
+        frequency_plan: updates.region,
+        class: updates.deviceClass,
+        supports_join: updates.activationType !== 'ABP',
         metadata: {
           ...updates.metadata,
           type: 'lorawan',
           protocol: 'lorawan',
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
+          updatedVia: 'lorawan-service'
         }
       };
 
-      const updatedDevice = await this.api.updateDevice(deviceId, loraUpdates);
-      return this.enhanceLoRaWANDevice(updatedDevice);
+      const updatedDevice = await this.dualWriteService.updateLoRaWANDevice(deviceId, lorawanUpdates);
+      console.log('✅ LoRaWAN device updated via dual-write:', updatedDevice);
+      return this.enhanceLoRaWANDeviceFromDB(updatedDevice);
     } catch (error) {
-      console.error('❌ Error updating LoRaWAN device:', error);
+      console.error('❌ Error updating LoRaWAN device via dual-write:', error);
       throw error;
     }
   }
@@ -127,14 +155,17 @@ class LoRaWANService {
   // LoRaWAN Gateway Management
   async getLoRaWANGateways() {
     try {
-      // Get devices that are configured as gateways
-      const allDevices = await this.api.getDevices(0, 1000);
+      console.log('🔄 Getting LoRaWAN gateways via dual-write service...');
       
-      const gateways = allDevices.clients?.filter(device => 
+      // Get devices that are configured as gateways using dual-write service
+      const allThings = await this.dualWriteService.getThings({ limit: 1000 });
+      
+      const gateways = allThings.filter(device => 
         device.metadata?.type === 'gateway' && 
         device.metadata?.protocol === 'lorawan'
       ) || [];
       
+      console.log(`✅ Found ${gateways.length} LoRaWAN gateways via dual-write`);
       return gateways.map(gateway => this.enhanceLoRaWANGateway(gateway));
     } catch (error) {
       console.error('❌ Error fetching LoRaWAN gateways:', error);
@@ -309,6 +340,47 @@ class LoRaWANService {
     };
   }
 
+  enhanceLoRaWANDeviceFromDB(dbDevice) {
+    // Handle database records with potentially different field naming conventions
+    const metadata = typeof dbDevice.metadata === 'string' 
+      ? JSON.parse(dbDevice.metadata) 
+      : (dbDevice.metadata || {});
+    
+    return {
+      id: dbDevice.id || dbDevice.device_id,
+      name: dbDevice.name || dbDevice.device_name,
+      description: dbDevice.description,
+      created_at: dbDevice.created_at,
+      updated_at: dbDevice.updated_at,
+      metadata: metadata,
+      deviceType: 'LoRaWAN',
+      region: dbDevice.frequency_plan || metadata.region || 'EU868',
+      deviceClass: dbDevice.class || metadata.deviceClass || 'A',
+      activationType: dbDevice.supports_join ? 'OTAA' : 'ABP',
+      dataRate: metadata.dataRate || 'SF7BW125',
+      txPower: metadata.txPower || 14,
+      devEUI: dbDevice.dev_eui || metadata.devEUI,
+      appEUI: dbDevice.app_eui || metadata.appEUI || metadata.joinEUI,
+      appKey: dbDevice.app_key || metadata.appKey,
+      devAddr: dbDevice.dev_addr || metadata.devAddr,
+      nwkSKey: dbDevice.nwk_s_key || metadata.nwkSKey,
+      appSKey: dbDevice.app_s_key || metadata.appSKey,
+      status: this.inferDeviceStatusFromDB(dbDevice),
+      lastSeen: dbDevice.last_seen || metadata.lastSeen || dbDevice.created_at,
+      batteryLevel: metadata.batteryLevel,
+      signalStrength: metadata.rssi || metadata.snr,
+      frameCounter: metadata.frameCounter || 0,
+      // Additional database-specific fields
+      lorawan_device_id: dbDevice.lorawan_device_id,
+      magistrala_thing_id: dbDevice.magistrala_thing_id,
+      supports_join: dbDevice.supports_join,
+      // Preserve original database fields for reference
+      _dbRecord: {
+        ...dbDevice
+      }
+    };
+  }
+
   enhanceLoRaWANGateway(gateway) {
     const metadata = gateway.metadata || {};
     
@@ -341,6 +413,25 @@ class LoRaWANService {
 
   inferDeviceStatus(device) {
     const lastSeen = device.metadata?.lastSeen || device.created_at;
+    if (!lastSeen) return 'unknown';
+    
+    const now = new Date();
+    const lastSeenDate = new Date(lastSeen);
+    const minutesSinceLastSeen = (now - lastSeenDate) / (1000 * 60);
+    
+    if (minutesSinceLastSeen < 15) return 'online';
+    if (minutesSinceLastSeen < 60) return 'idle';
+    return 'offline';
+  }
+
+  inferDeviceStatusFromDB(dbDevice) {
+    // Check for explicit status field first
+    if (dbDevice.status) {
+      return dbDevice.status;
+    }
+    
+    // Use last_seen field if available
+    const lastSeen = dbDevice.last_seen || dbDevice.updated_at || dbDevice.created_at;
     if (!lastSeen) return 'unknown';
     
     const now = new Date();

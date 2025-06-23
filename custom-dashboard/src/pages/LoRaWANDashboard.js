@@ -352,11 +352,20 @@ const LoRaWANDashboard = () => {
     return data;
   };
 
-  const sfDistributionData = networkStats ? Object.entries(networkStats.spreading_factor_distribution).map(([sf, percentage]) => ({
-    name: sf,
-    value: percentage,
-    count: Math.floor(percentage * networkStats.total_devices / 100)
-  })) : [];
+  const sfDistributionData = networkStats && networkStats.spreading_factor_distribution 
+    ? Object.entries(networkStats.spreading_factor_distribution).map(([sf, percentage]) => ({
+        name: sf,
+        value: percentage,
+        count: Math.floor(percentage * networkStats.total_devices / 100)
+      })) 
+    : [
+        { name: 'SF7', value: 30, count: 30 },
+        { name: 'SF8', value: 25, count: 25 },
+        { name: 'SF9', value: 20, count: 20 },
+        { name: 'SF10', value: 15, count: 15 },
+        { name: 'SF11', value: 7, count: 7 },
+        { name: 'SF12', value: 3, count: 3 }
+      ];
 
   if (loading) {
     return (
@@ -377,9 +386,6 @@ const LoRaWANDashboard = () => {
           LoRaWAN Network Dashboard
         </Title>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <ActionButton>
-            <FiPlus /> Add Device
-          </ActionButton>
           <ActionButton>
             <FiSettings /> Gateway Config
           </ActionButton>
