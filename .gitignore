@@ -60,7 +60,10 @@ postgresql-backend.tar.gz
 AI_ASSISTANCE_DOCUMENTATION.md
 DEPLOYMENT_COMPLETE.md  
 DEPLOYMENT_SUCCESS.md
+
+# Claude-specific files (ignore everywhere)
 CLAUDE.md
+**/CLAUDE.md
 
 # Keep these files that demonstrate hard work and effort:
 # - All deployment scripts (show deployment attempts and solutions)
