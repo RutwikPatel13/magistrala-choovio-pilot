@@ -59,12 +59,14 @@ This repository contains a comprehensive Magistrala IoT platform with a modern R
 │   └── scripts/              # Database setup and migration scripts
 ├── ☁️ aws-deployment/           # AWS Deployment Configurations
 │   └── cloudfront-config.json # CDN configuration
-├── 🚀 deployment/              # Deployment Automation Scripts
-│   ├── deploy-auto.sh         # Automated S3 deployment
-│   └── deploy-to-s3.sh        # Manual S3 deployment
-├── 📋 IMPLEMENTATION_SUMMARY.md  # Technical implementation details
-├── 📊 PROJECT_STATUS_REPORT.md  # Project progress and status
-└── 📝 Various .md files        # Comprehensive documentation
+├── 📚 docs/                    # Comprehensive Documentation
+│   ├── FINAL_PROJECT_REPORT.md # Complete project report
+│   ├── TESTING.md             # Testing guide and scenarios
+│   ├── DEPLOYMENT_GUIDE.md    # Deployment instructions
+│   ├── VERSION.md             # Version tracking
+│   ├── CHANGELOG.md           # Change history
+│   └── README.md              # Documentation index
+└── 🚀 Various deployment scripts # Automated deployment tools
 ```
 
 ## 🛠️ Technology Stack
@@ -204,13 +206,21 @@ This project extensively leveraged AI assistance for:
 - **DevOps & Deployment** (15%): Infrastructure guidance
 - **Documentation** (10%): Report generation, tracking
 
-See [AI_ASSISTANCE_DOCUMENTATION.md](AI_ASSISTANCE_DOCUMENTATION.md) for detailed usage.
+See [AI_ASSISTANCE_DOCUMENTATION.md](docs/AI_ASSISTANCE_DOCUMENTATION.md) for detailed usage.
 
-## 📋 Project Reports
+## 📚 Documentation
 
-- **[📊 Complete Project Report](PROJECT_REPORT.md)** - Technical implementation details
-- **[🤖 AI Assistance Documentation](AI_ASSISTANCE_DOCUMENTATION.md)** - AI usage tracking
-- **[☁️ AWS Deployment Guide](aws-deployment/README.md)** - Cloud deployment instructions
+**📋 [Complete Documentation Index](docs/README.md)**
+
+### **Quick Access:**
+- **[📊 Final Project Report](docs/FINAL_PROJECT_REPORT.md)** - Complete project completion report
+- **[🧪 Testing Guide](docs/TESTING.md)** - Comprehensive testing scenarios
+- **[🚀 Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Step-by-step deployment
+- **[📈 Version History](docs/VERSION.md)** - Current status and releases
+- **[🔄 Change Log](docs/CHANGELOG.md)** - Detailed change history
+
+### **All Documentation:**
+All project documentation has been organized in the [`docs/`](docs/) folder with a comprehensive index.
 
 ## 🏆 Key Achievements
 
