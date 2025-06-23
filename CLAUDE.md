@@ -292,20 +292,50 @@ REACT_APP_MAGISTRALA_PROVISION_PORT=8190
 - ✅ Multi-terminal session continuity
 - ✅ AWS deployment capability
 
+### Deployment Configuration
+
+#### AWS S3 + EC2 Setup
+- **Frontend**: Deployed to S3 bucket `choovio-dashboard.s3-website-us-east-1.amazonaws.com`
+- **Backend**: Magistrala running on EC2 instance `100.27.187.76`
+- **Status**: ✅ Build successful, deployed with CORS auto-detection
+
+#### CORS Configuration for Production
+- **Issue**: CORS blocking S3 frontend → EC2 backend requests
+- **Solution**: nginx CORS configuration on EC2 instance
+- **Script**: `configure-nginx-cors.sh` - automated nginx setup for EC2
+
+```bash
+# To apply CORS fix on EC2 instance (100.27.187.76):
+scp configure-nginx-cors.sh ubuntu@100.27.187.76:~/
+ssh ubuntu@100.27.187.76
+chmod +x configure-nginx-cors.sh
+sudo ./configure-nginx-cors.sh
+```
+
+#### Environment Configuration
+```env
+# Production (.env.production)
+REACT_APP_MAGISTRALA_BASE_URL=http://100.27.187.76
+REACT_APP_MAGISTRALA_USERS_PORT=9002
+REACT_APP_MAGISTRALA_THINGS_PORT=9006
+REACT_APP_MAGISTRALA_CHANNELS_PORT=9005
+REACT_APP_MAGISTRALA_HTTP_PORT=8008
+```
+
 ### Next Steps
 1. ✅ Complete Magistrala API integration (ALL MOCK DATA REPLACED)
-2. ✅ Implement proper authentication with JWT tokens
-3. 🔄 Add real-time protocol support (MQTT, WebSocket) - IN PROGRESS
-4. 🔄 Deploy to AWS with refreshed credentials  
-5. 🔄 Add advanced features (Bootstrap, Provision, Certificates)
-6. 🔄 Comprehensive testing with real Magistrala instance
-7. 🔄 Performance optimization and caching strategies
-8. 🔄 Add monitoring and analytics features
+2. ✅ Implement proper authentication with JWT tokens  
+3. ✅ Deploy to AWS S3 with CORS auto-detection fallback
+4. 🔄 Apply nginx CORS configuration on EC2 instance - READY TO EXECUTE
+5. 🔄 Add real-time protocol support (MQTT, WebSocket)
+6. 🔄 Add advanced features (Bootstrap, Provision, Certificates)
+7. 🔄 Comprehensive testing with real Magistrala instance
+8. 🔄 Performance optimization and caching strategies
 
 ---
-**Last Updated**: 2025-06-21  
-**Current Task**: ✅ COMPLETED - Full Magistrala API integration with JWT authentication
-**Next Priority**: Testing with real Magistrala instance and deploying to AWS
-**Active Branch**: `dev` (ready for comprehensive testing and merge to main)
+**Last Updated**: 2025-06-23  
+**Current Task**: 🔄 nginx CORS configuration ready for EC2 deployment
+**Next Priority**: Execute nginx CORS script on EC2 to fix production CORS issues
+**Active Branch**: `main` (production ready with S3 deployment complete)
 
-**Major Achievement**: 🎉 Successfully replaced ALL mock implementations with proper Magistrala API calls while maintaining backward compatibility with demo mode for testing.
+**Major Achievement**: 🎉 Full S3 deployment with intelligent CORS fallback and automated nginx configuration script ready for EC2.

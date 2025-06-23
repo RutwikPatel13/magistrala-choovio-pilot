@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: magistrala-postgres-backup
+    environment:
+      POSTGRES_DB: magistrala_backup
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../custom-dashboard/src/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - magistrala-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d magistrala_backup"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-backend:
+    build: .
+    container_name: magistrala-postgres-backend
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: magistrala_backup
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PORT: 3001
+      NODE_ENV: production
+      CORS_ORIGINS: "http://localhost:3000,https://choovio-iot-dashboard-1750453820.s3-website-us-east-1.amazonaws.com"
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - magistrala-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: magistrala-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@choovio.com
+      PGADMIN_DEFAULT_PASSWORD: ChoovioAdmin2025!
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - magistrala-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  magistrala-network:
+    driver: bridge
+    external: false

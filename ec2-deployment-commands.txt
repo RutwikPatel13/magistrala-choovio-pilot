@@ -1,0 +1,171 @@
+🚀 EC2 PostgreSQL Deployment Commands
+
+STEP 1: Connect to your EC2 instance
+========================================
+Use EC2 Instance Connect or SSH:
+ssh ubuntu@34.207.208.152
+
+STEP 2: Run the setup script
+========================================
+Copy and paste this entire command block:
+
+sudo apt update -y && \
+sudo apt install -y nodejs npm docker.io && \
+sudo systemctl start docker && \
+sudo systemctl enable docker && \
+sudo usermod -aG docker ubuntu && \
+mkdir -p /home/ubuntu/postgresql-backend && \
+cd /home/ubuntu/postgresql-backend && \
+cat > package.json << 'EOF'
+{
+  "name": "magistrala-postgresql-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {"start": "node server.js"},
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5",
+    "morgan": "^1.10.0"
+  }
+}
+EOF
+
+STEP 3: Create configuration files
+========================================
+cat > .env << 'EOF'
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=magistrala_backup
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+PORT=3001
+NODE_ENV=production
+CORS_ORIGINS=https://choovio-iot-dashboard-1750453820.s3-website-us-east-1.amazonaws.com,http://34.207.208.152:3001
+EOF
+
+STEP 4: Create database schema
+========================================
+cat > schema.sql << 'EOF'
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    magistrala_id VARCHAR(255) UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    role VARCHAR(50) DEFAULT 'user',
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS things (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    magistrala_id VARCHAR(255) UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    secret VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'active',
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS channels (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    magistrala_id VARCHAR(255) UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO users (magistrala_id, email, role) VALUES 
+    ('demo_admin_2025', 'admin@choovio.com', 'admin'),
+    ('demo_user_2025', 'user@choovio.com', 'user')
+ON CONFLICT (email) DO NOTHING;
+EOF
+
+STEP 5: Start PostgreSQL with Docker
+========================================
+sudo docker run -d \
+  --name magistrala-postgres-backup \
+  -e POSTGRES_DB=magistrala_backup \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  -v $(pwd)/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro \
+  --restart unless-stopped \
+  postgres:15-alpine
+
+STEP 6: Install dependencies and start backend
+========================================
+npm install && \
+sleep 15 && \
+nohup node -e "
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+require('dotenv').config();
+
+const app = express();
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'magistrala_backup',
+  user: 'postgres',
+  password: 'postgres'
+});
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ status: 'ok', timestamp: result.rows[0].now });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const users = await pool.query('SELECT COUNT(*) FROM users');
+    const things = await pool.query('SELECT COUNT(*) FROM things');
+    const channels = await pool.query('SELECT COUNT(*) FROM channels');
+    res.json({
+      users: parseInt(users.rows[0].count),
+      things: parseInt(things.rows[0].count),
+      channels: parseInt(channels.rows[0].count)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(3001, () => {
+  console.log('🚀 PostgreSQL Backend running on port 3001');
+});
+" > server.js && \
+nohup npm start > backend.log 2>&1 &
+
+STEP 7: Test the deployment
+========================================
+sleep 10 && \
+curl http://localhost:3001/api/health && \
+echo "\n✅ PostgreSQL Backend deployed successfully!"
+
+STEP 8: Open port 3001 in EC2 Security Group
+========================================
+Go to AWS Console → EC2 → Security Groups → Add inbound rule:
+- Type: Custom TCP
+- Port: 3001
+- Source: 0.0.0.0/0 (or your IP)
+
+STEP 9: Update React app configuration
+========================================
+Update .env.production in your React app:
+REACT_APP_POSTGRES_API_URL=http://34.207.208.152:3001/api
+
+Then rebuild and redeploy:
+npm run build
+./aws-deployment/scripts/upload-react-to-s3.sh
