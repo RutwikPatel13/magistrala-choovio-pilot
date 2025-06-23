@@ -988,24 +988,24 @@ Based on the current implementation, here are planned improvements:
 
 #### Dashboard Overview
 
-![Dashboard Overview](../Desktop/1.png)
+![Dashboard Overview](./1.png)
 
 *The main dashboard showing real-time metrics, device statistics, and activity feed*
 
 #### AWS S3 Deployment
 
-![S3 Buckets](../Desktop/4.png)
+![S3 Buckets](./4.png)
 
 *S3 bucket configuration showing the deployed frontend application*
 
 #### EC2 Infrastructure
 
-![EC2 Instances](../Desktop/3.png)
+![EC2 Instances](./3.png)
 *Running EC2 instances for Magistrala services and PostgreSQL backend*
 
 #### EC2 Instance Details
 
-![Instance Details](../Desktop/2.png)
+![Instance Details](./2.png)
 *Detailed view of the nginx backend instance with public IP configuration*
 
 ### C. Architecture Diagrams
